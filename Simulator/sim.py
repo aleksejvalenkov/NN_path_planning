@@ -2,6 +2,7 @@ import pygame as pg
 import sys
 from pygame.locals import *
 from utils import *
+from transforms import *
  
 FPS = 30
 silver = (194, 194, 194)
@@ -10,13 +11,18 @@ red =   (194,0 , 0)
 green = (0, 194, 0)
 blue =  (0, 0, 194)
 
-WINDOW_SIZE = (600, 600)
+WINDOW_SIZE = (1000, 1000)
  
 pg.init()
 screen = pg.display.set_mode(WINDOW_SIZE,RESIZABLE, 32)
 clock = pg.time.Clock()
-font = pg.font.SysFont("Ubuntu Condensed", 35, bold=False, italic=False)
-year = 2021
+font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
+
+
+# init objects
+map = Map(WINDOW_SIZE)
+map.generate()
+robot = Robot(map.bool_map)
  
 while True:
     clock.tick(FPS)
@@ -26,20 +32,32 @@ while True:
             pg.quit()
             sys.exit()
         elif i.type == KEYDOWN:
-            # print(i.key)
             if i.key == 27:
                 pg.quit()
                 sys.exit()
 
+    keys = pg.key.get_pressed()
+    if keys[pg.K_w]:
+        robot.teleop(teleop_vec=[1,0,0])
+    if keys[pg.K_s]:
+        robot.teleop(teleop_vec=[-1,0,0])
+    if keys[pg.K_a]:
+        robot.teleop(teleop_vec=[0,0,-0.1])
+    if keys[pg.K_d]:
+        robot.teleop(teleop_vec=[0,0,0.1])
+
 
 
 # Render scene
+    robot.update()
 
 
 # Update display
     screen.fill(silver)
 
-
-    # text = font.render("Привет Мир! "+str(year)+" год!",True,silver)
-    # screen.blit(text, [150,170])
+    map.draw(screen)
+    robot.draw(screen)
+    x,y,theta = robot.get_pose()
+    text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
+    screen.blit(text, [10,10])
     pg.display.update()
