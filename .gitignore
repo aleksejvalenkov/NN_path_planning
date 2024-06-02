@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[codzw]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+wheels/
+lib/
+lib64/
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Miscellaneous
+/install/
+/log/
+/data/
+*.swp
+*.zip
+*.gv
+*.pdf
+
+# Image & video files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.mp4
+
+# Maps.pcd
+*.pcd
+
+# Deep Learning Models
+*.ckpt
+*.pth
+*.onnx
+*.engine
