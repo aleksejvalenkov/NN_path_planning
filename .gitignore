@@ -20,6 +20,7 @@ lib64/
 /install/
 /log/
 /data/
+data/
 *.swp
 *.zip
 *.gv
