@@ -6,3 +6,4 @@ argparse>=1.4.0
 screeninfo
 PyQt5>=5.15.10
 pygame
+torch
