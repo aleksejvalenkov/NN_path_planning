@@ -4,6 +4,7 @@ from numpy import floor
 from transforms import *
 from perlin_numpy import generate_perlin_noise_2d
 import cv2 
+import copy
 
 map_color = (100,100,100)
 robot_color = (0,0,190)
@@ -25,7 +26,7 @@ class DepthSensor:
 
     def update(self):
         self.x , self.y, self.theta = get_XYTheta(self.transform)
-        # print(self.matrix)
+        print(self.matrix)
 
     def scan(self, bool_map):
         for i_ray in range(len(self.rays_angles)):
@@ -51,19 +52,32 @@ class DepthSensor:
                         break
                     else:
                         self.range_points[i_ray] = (np.inf, np.inf)
-            
 
+            self.matrix[i_ray] = np.sqrt(pow((self.x - self.range_points[i_ray][0]), 2) + pow((self.y - self.range_points[i_ray][1]), 2))
+            
 
     def draw(self, screen):
         # draw sensor
         pg.draw.circle(screen, sensor_color, [self.x , self.y], 7, 3)
         # draw rays
-        for point in self.range_points:
-            pg.draw.circle(screen, (255,0,0), [point[0] , point[1]], 3, 3)
+
         
         for ray in self.rays_angles:
             pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(ray+self.theta) * self.ray_lenght , self.y + np.sin(ray+self.theta) * self.ray_lenght])
+        for point in self.range_points:
+            pg.draw.circle(screen, (255,0,0), [point[0] , point[1]], 3, 3)
 
+
+        screen_size = screen.get_size()
+        rect_size = 20
+        lens = copy.copy(self.matrix)
+        lens[lens >= self.ray_lenght] = self.ray_lenght
+        lens[:] = lens[:] * 255 / 500
+        # print(lens)
+        for i in range(len(lens)):
+            r = round(lens[i])
+            pg.draw.rect(screen, (r, r, r), 
+                 (rect_size*i, screen_size[1]-rect_size , rect_size*i+rect_size, screen_size[1]))
 
 class UWBSensor:
     def __init__(self) -> None:

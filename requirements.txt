@@ -7,4 +7,5 @@ screeninfo
 PyQt5>=5.15.10
 pygame
 torch
+copy
 git+https://github.com/pvigier/perlin-numpy

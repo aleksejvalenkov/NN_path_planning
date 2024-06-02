@@ -55,6 +55,7 @@ while True:
 # Update display
     screen.fill(silver)
 
+
     map.draw(screen)
     robot.draw(screen)
     x,y,theta = robot.get_pose()
