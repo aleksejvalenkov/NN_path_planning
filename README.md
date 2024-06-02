@@ -4,3 +4,8 @@
 ``` bash
 pip3 install -r requirements.txt 
 ```
+
+## Run simulator
+``` bash
+python3 Simulator/sim.py 
+```
