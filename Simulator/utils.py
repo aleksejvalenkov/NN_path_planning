@@ -5,11 +5,15 @@ from transforms import *
 from perlin_numpy import generate_perlin_noise_2d
 import cv2 
 import copy
+import math
+from planning.A_star import solve
 
 map_color = (100,100,100)
+map_color_2 = (150,150,150)
 robot_color = (0,0,190)
 sensor_color = (0,190,0)
 silver = (194, 194, 194)
+way_color = (200, 50, 50)
 
 
 class DepthSensor:
@@ -46,7 +50,7 @@ class DepthSensor:
                 x_size = len(bool_map) - 1
                 y_size = len(bool_map[0]) - 1
                 if 0 <= x <= x_size and 0 <= y <= y_size:
-                    if bool_map[x][y] == False:
+                    if bool_map[x][y] == 1:
                         self.range_points[i_ray] = (x,y)
                         break
                     else:
@@ -59,8 +63,8 @@ class DepthSensor:
         # draw sensor
         pg.draw.circle(screen, sensor_color, [self.x , self.y], 7, 3)
         # draw rays
-        for ray in self.rays_angles:
-            pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(ray+self.theta) * self.ray_lenght , self.y + np.sin(ray+self.theta) * self.ray_lenght])
+        # for ray in self.rays_angles:
+        #     pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(ray+self.theta) * self.ray_lenght , self.y + np.sin(ray+self.theta) * self.ray_lenght])
         for point in self.range_points:
             pg.draw.circle(screen, (255,0,0), [point[0] , point[1]], 3, 3)
 
@@ -79,15 +83,16 @@ class DepthSensor:
 class UWBSensor:
     def __init__(self) -> None:
         pass
-    
 
 class Robot:
     def __init__(self, bool_map) -> None:
         self.robot_radius = 25
         self.bool_map = bool_map
-        self.x , self.y, self.theta = [100,100, 2]
+        self.x , self.y, self.theta = [100,100, 0]
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
+        self.path = []
+        self.way_point = (13,13)
         # print(f'Robot transform: \n {self.transform}')
         #Init Sensors
         self.camera_transform = np.array( 
@@ -98,10 +103,15 @@ class Robot:
         self.depth_camera = DepthSensor(self.transform @ self.camera_transform)
         self.depth_image = None
 
-    def update(self):
+    def update(self, map):
         self.depth_camera.transform = self.transform @ self.camera_transform
         self.depth_camera.update()
         self.depth_image = self.depth_camera.scan(self.bool_map)
+        # print(f'Robot pose on map {(self.x//10, self.y//10)}')
+        self.robot_pose_on_map = (int(self.x//10), int(self.y//10))
+        if map.resized_map[self.way_point[0]][self.way_point[1]] != 1:
+            self.path = solve(map.resized_map, self.robot_pose_on_map, self.way_point)
+
 
     def teleop(self, teleop_vec):
         self.t_vec = np.array([ teleop_vec[0] , teleop_vec[1]])
@@ -117,6 +127,15 @@ class Robot:
 
         self.depth_camera.draw(screen)
 
+        
+        pg.draw.rect(screen, robot_color, (self.robot_pose_on_map[0]*10, self.robot_pose_on_map[1]*10, 10, 10))
+        # Draw path
+        if self.path is not None:
+            for cell in self.path:
+                pg.draw.rect(screen, way_color, (cell[0]*10, cell[1]*10 , 10, 10))
+
+
+
     def get_pose(self):
         return self.x , self.y, self.theta
 
@@ -124,6 +143,10 @@ class Map:
     def __init__(self, size = (200, 200)) -> None:
         self.size = size
         self.map = np.zeros(self.size)
+        self.bool_map = np.zeros(self.size)
+        self.scale = 0.1
+        self.expansion_cells = 3
+        self.resized_map = cv2.resize(self.bool_map, (int(self.size[0]*self.scale) , int(self.size[1]*self.scale)), interpolation = cv2.INTER_NEAREST)
         pass
 
     def generate(self):
@@ -132,35 +155,79 @@ class Map:
             for i in range(len(map)):
                 for j in range(len(map[0])):
                     if map[i][j] >= 0.5:
-                        bool_map[i][j] = False
+                        bool_map[i][j] = 1
                     else:
-                        bool_map[i][j] = True
-
+                        bool_map[i][j] = 0
             return bool_map
         
-        def get_image_map(map):
+        def get_image_map(map_, resized_map):
+            cell_size = round(1/self.scale)
+            map = copy.copy(map_)
+            for i in range(0, len(map), cell_size):
+                for j in range(0, len(map[0]), cell_size):
+                    for k in range(i, i+cell_size):
+                        for l in range(j, j+cell_size):
+                            if resized_map[k//cell_size][l//cell_size] == 1 and map[k][l]!=1:
+                                map[k][l] = 2
+
             img_1 = np.zeros([self.size[0], self.size[1], 3])
             for i in range(len(map)):
                 for j in range(len(map[0])):
-                    if map[i][j] >= 0.5:
-                        img_1[i][j] = map_color
-                    else:
+                    if map[i][j] == 0:
                         img_1[i][j] = silver
-
+                    elif map[i][j] == 2:
+                        img_1[i][j] = map_color_2
+                    elif map[i][j] == 1:
+                        img_1[i][j] = map_color
             return img_1
+        
+        def extend_bool_map(bool_map):
+            def get_cels_in_radius(v, map):
+                x1, y1 = v
+                rows, cols = map.shape
+                check_next_node = lambda x, y: True if 0 <= y < cols and 0 <= x < rows and not bool(map[x][y]) else False
+                ways = [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [1, 1], [-1, 1]
+                return [(x1 + dx, y1 + dy) for dx, dy in ways if check_next_node(x1 + dx, y1 + dy)]
+                
+            extended_bool_map = copy.copy(bool_map)
+
+            for i in range(self.expansion_cells):
+                if i + 1 == 1:
+                    for (x, y), value in np.ndenumerate(bool_map):
+                        if bool_map[x][y] == 1:
+                            for cell in get_cels_in_radius((x, y), bool_map):
+                                # print(cell)
+                                extended_bool_map[cell[0]][cell[1]] = 1
+                else:
+                    Map_F = copy.copy(bool_map)
+                    for (x, y), value in np.ndenumerate(extended_bool_map):
+                        if extended_bool_map[x][y] == 1:
+                            for cell in get_cels_in_radius((x, y), extended_bool_map):
+                                # print(cell)
+                                Map_F[cell[0]][cell[1]] = 1
+                    for (x, y), value in np.ndenumerate(bool_map):
+                        extended_bool_map[x][y] = extended_bool_map[x][y] or Map_F[x][y]
+
+            return extended_bool_map
 
         # np.random.seed(0)
         noise = generate_perlin_noise_2d(self.size, (self.size[0] // 100, self.size[1] // 100))
         noise[noise < 0.5 ] = 0
         noise[noise >= 0.5 ] = 1
-
+        # print(noise)
         self.bool_map = get_bool_map(noise)
-        self.map = get_image_map(noise)
+        self.bool_map = noise
+        self.resized_map = cv2.resize(self.bool_map, (int(self.size[0]*self.scale) , int(self.size[1]*self.scale)), interpolation = cv2.INTER_NEAREST)
+        self.resized_map = extend_bool_map(self.resized_map)
+        self.map = get_image_map(self.bool_map, self.resized_map)
    
 
     def update(self):
+        # self.path = solve(self.resized_map, (0 , 0), (10 , 10))
         pass
 
     def draw(self, screen):
         surf = pg.surfarray.make_surface(self.map)
         screen.blit(surf, (0, 0))
+
+

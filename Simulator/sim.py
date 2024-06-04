@@ -49,7 +49,9 @@ while True:
 
 
 # Render scene
-    robot.update()
+    map.update()
+    robot.update(map)
+    
 
 
 # Update display
@@ -61,4 +63,6 @@ while True:
     x,y,theta = robot.get_pose()
     text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
     screen.blit(text, [10,10])
+    text = font.render(f'Robot coordinates on map: x = {robot.robot_pose_on_map[0]}, y = {robot.robot_pose_on_map[1]}, theta = {theta:.2f}' , True, black)
+    screen.blit(text, [10,25])
     pg.display.update()
