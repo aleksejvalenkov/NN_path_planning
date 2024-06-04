@@ -26,13 +26,28 @@ class Node:
 
 
 def get_next_node(v, map):
-    x1, y1 = v
+    x1, y1, f = v
     rows, cols = map.shape
     check_next_node = lambda x, y: True if 0 <= y < cols and 0 <= x < rows and not bool(map[x][y]) else False
     lenght = lambda x, y: math.sqrt(math.fabs(x) + math.fabs(y))
-    ways =  [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [1, 1], [-1, 1], \
-            [-1, 2], [1, 2], [2, 1], [2, -1], [-1, -2], [1, -2], [-2, 1], [-2, -1]
-    return [((x1 + dx, y1 + dy), round(lenght(dx, dy) * 10)) for dx, dy in ways if check_next_node(x1 + dx, y1 + dy)]
+    if f == 1:
+        ways =  [0, 1, 1], [-1, 1, 8], [1, 1, 5], [0, 0, 8], [0, 0, 5]
+    elif f == 2:
+        ways =  [1, 1, 5], [1, 0, 2], [1, -1, 6], [0, 0, 5],[0, 0, 6]
+    elif f == 3:
+        ways =  [1, -1, 6], [0, -1, 3], [-1, -1, 7], [0, 0, 6], [0, 0, 7]
+    elif f == 4:
+        ways =  [-1, 1, 8], [-1, 0, 4], [-1, -1, 7], [0, 0, 8],[0, 0, 7]
+    elif f == 5:
+        ways =  [0, 1, 1], [1, 1, 5], [1, 0, 2], [0, 0, 1], [0, 0, 2]
+    elif f == 6:
+        ways =  [1, 0, 2], [1, -1, 6], [0, -1, 3], [0, 0, 2], [0, 0, 3]
+    elif f == 7:
+        ways =  [-1, 0, 4], [-1, -1, 7], [0, -1, 3], [0, 0, 4], [0, 0, 3]
+    elif f == 8:
+        ways =  [-1, 0, 4], [1, 1, 8], [0, 1, 1], [0, 0, 4], [0, 0, 1]
+
+    return [((x1 + dx, y1 + dy, df), round(lenght(dx, dy) * 10)) for dx, dy, df in ways if check_next_node(x1 + dx, y1 + dy)]
 
 def astar_search(map, start, end):
     open = []
@@ -57,9 +72,9 @@ def astar_search(map, start, end):
             # Return reversed path
             return path[::-1]
 
-        (x, y) = current_node.position
+        (x, y, f) = current_node.position
         #neighbors = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
-        neighbors = get_next_node((x,y), map)
+        neighbors = get_next_node((x,y, f), map)
         # print('current_node',current_node.position)
         # print('neighbors', neighbors)
         # Loop neighbors
@@ -74,8 +89,8 @@ def astar_search(map, start, end):
                 continue
 
             neighbor.g = neighbor.g + weight / 10
-            # neighbor.h = ((neighbor.position[0] - goal_node.position[0])**2 + (neighbor.position[1] - goal_node.position[1])**2)
-            neighbor.h = abs(neighbor.position[0] - goal_node.position[0]) + abs(neighbor.position[1] - goal_node.position[1])
+            neighbor.h = ((neighbor.position[0] - goal_node.position[0])**2 + (neighbor.position[1] - goal_node.position[1])**2)
+            # neighbor.h = abs(neighbor.position[0] - goal_node.position[0]) + abs(neighbor.position[1] - goal_node.position[1])
             # neighbor.h = max(abs(neighbor.position[0] - goal_node.position[0]), abs(neighbor.position[1] - goal_node.position[1]))*2
             neighbor.f = neighbor.g + neighbor.h
             # Check if neighbor is in open list and if it has a lower f value
@@ -100,5 +115,5 @@ def solve(bool_map, Start, Goal):
     start = Start
     goal = Goal
     path = astar_search(bool_map, start, goal)
-    # print(path)
+    print(path)
     return path
