@@ -91,7 +91,7 @@ class Robot:
         self.x , self.y, self.theta = [100,100, 0]
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
-        self.path = []
+        self.path = None
         self.way_point = (13, 13, 2)
         # print(f'Robot transform: \n {self.transform}')
         #Init Sensors
@@ -112,6 +112,10 @@ class Robot:
         self.robot_pose_on_map = (int(self.x//10), int(self.y//10), code)
         if map.resized_map[self.way_point[0]][self.way_point[1]] != 1:
             self.path = solve(map.resized_map, self.robot_pose_on_map, self.way_point)
+            if self.path:
+                print(self.path[0])
+                action, text = self.get_action_from_path(self.path[0], self.robot_pose_on_map)
+                print(action, text)
 
 
     def teleop(self, teleop_vec):
@@ -142,22 +146,30 @@ class Robot:
         code = 0
         theta = np.degrees(theta) * -1
         if -22.5 < theta < 22.5:
-            code = 2
+            code = 0
         if 22.5 < theta < 67.5:
-            code = 6
+            code = 1
         if 67.5 < theta < 112.5:
-            code = 3
+            code = 2
         if 112.5 < theta < 157.5:
-            code = 7
+            code = 3
         if 157.5 < theta or theta < -157.5:
             code = 4
         if -22.5 > theta > -67.5:
-            code = 5
+            code = 7
         if -67.5 > theta > -112.5:
-            code = 1
+            code = 6
         if -112.5 > theta > -157.5:
-            code = 8
+            code = 5
         return code
+    
+    def get_action_from_path(self, first_step, robot_pose):
+        action, text = None, None
+        d = np.array(first_step[:2]) - np.array(robot_pose[:2])
+        print(d)
+
+        return action, text
+
 
 class Map:
     def __init__(self, size = (200, 200)) -> None:
