@@ -114,8 +114,9 @@ class Robot:
             self.path = solve(map.resized_map, self.robot_pose_on_map, self.way_point)
             if self.path:
                 print(self.path[0])
-                action, text = self.get_action_from_path(self.path[0], self.robot_pose_on_map)
-                print(action, text)
+
+        action, text = self.get_action_from_path(self.path, self.robot_pose_on_map)
+        print(f'Action: {action}, {text}')
 
 
     def teleop(self, teleop_vec):
@@ -163,10 +164,35 @@ class Robot:
             code = 5
         return code
     
-    def get_action_from_path(self, first_step, robot_pose):
+    def get_action_from_path(self, path, robot_pose):
         action, text = None, None
-        d = np.array(first_step[:2]) - np.array(robot_pose[:2])
-        print(d)
+        if path:
+            first_step = path[0]
+            d = np.array(first_step) - np.array(robot_pose)
+            if d[2] == 7 or d[2] == -7:
+                d[2] = -1
+            print(np.abs(d[:2]))
+
+            if np.sum(np.abs(d[:2])) == 1 and d[2] == 0:
+                action = 2
+                text = 'forward'
+            elif np.sum(np.abs(d[:2])) == 0:
+                if d[2] == 1:
+                    action = 0
+                    text = 'stay and rot -45*'
+                if d[2] == -1:
+                    action = 0
+                    text = 'stay and rot 45*'
+            elif np.sum(np.abs(d[:2])) > 0 and d[2] != 0:
+                if d[2] == 1:
+                    action = 0
+                    text = 'forward and rot -45*'
+                if d[2] == -1:
+                    action = 0
+                    text = 'forward and rot 45*'
+        else:
+            action = 5
+            text = 'stay'
 
         return action, text
 
