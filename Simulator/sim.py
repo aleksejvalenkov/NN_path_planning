@@ -21,9 +21,7 @@ font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
 
 
 # init objects
-map = Map(WINDOW_SIZE)
-map.generate()
-robot = Robot(map.bool_map)
+robot = Robot()
  
 while True:
     clock.tick(FPS)
@@ -39,31 +37,25 @@ while True:
 
     keys = pg.key.get_pressed()
     if keys[pg.K_w]:
-        robot.teleop(teleop_vec=[4,0,0])
+        robot.teleop(teleop_vec=[0,-2])
     if keys[pg.K_s]:
-        robot.teleop(teleop_vec=[-4,0,0])
+        robot.teleop(teleop_vec=[0,2])
     if keys[pg.K_a]:
-        robot.teleop(teleop_vec=[0,0,-0.2])
+        robot.teleop(teleop_vec=[-2,0])
     if keys[pg.K_d]:
-        robot.teleop(teleop_vec=[0,0,0.2])
+        robot.teleop(teleop_vec=[2,0])
 
 
 
 # Render scene
-    map.update()
-    robot.update(map)
-    
 
+    robot.update()
 
 # Update display
     screen.fill(silver)
 
-
-    map.draw(screen)
     robot.draw(screen)
-    x,y,theta = robot.get_pose()
-    text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
+    x,y = robot.get_pose()
+    text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}' , True, black)
     screen.blit(text, [10,10])
-    text = font.render(f'Robot coordinates on map: x = {robot.robot_pose_on_map[0]}, y = {robot.robot_pose_on_map[1]}, code = {robot.robot_pose_on_map[2]}' , True, black)
-    screen.blit(text, [10,25])
     pg.display.update()
