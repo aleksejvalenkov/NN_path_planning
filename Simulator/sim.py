@@ -3,7 +3,8 @@ import sys
 from pygame.locals import *
 from utils import *
 from transforms import *
- 
+
+
 FPS = 30
 silver = (194, 194, 194)
 black = (0, 0, 0)
@@ -38,13 +39,13 @@ while True:
 
     keys = pg.key.get_pressed()
     if keys[pg.K_w]:
-        robot.teleop(teleop_vec=[2,0,0])
+        robot.teleop(teleop_vec=[4,0,0])
     if keys[pg.K_s]:
-        robot.teleop(teleop_vec=[-2,0,0])
+        robot.teleop(teleop_vec=[-4,0,0])
     if keys[pg.K_a]:
-        robot.teleop(teleop_vec=[0,0,-0.1])
+        robot.teleop(teleop_vec=[0,0,-0.2])
     if keys[pg.K_d]:
-        robot.teleop(teleop_vec=[0,0,0.1])
+        robot.teleop(teleop_vec=[0,0,0.2])
 
 
 

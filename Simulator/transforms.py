@@ -17,3 +17,15 @@ def get_XYTheta(transform):
     theta = np.arctan2(transform[1,0], transform[0,0])
 
     return x, y, theta
+
+def constrain(x, a, b):
+    if x > 0.0 and x < abs(a):
+        return a
+    elif x > 0.0 and x > abs(b):
+        return b
+    elif x < 0.0 and x > -abs(a):
+        return -a
+    elif x < 0.0 and x < -abs(b):
+        return -b
+    else:
+        return x

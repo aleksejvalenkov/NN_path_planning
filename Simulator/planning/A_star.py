@@ -89,9 +89,9 @@ def astar_search(map, start, end):
                 continue
 
             neighbor.g = neighbor.g + weight / 10
-            # neighbor.h = ((neighbor.position[0] - goal_node.position[0])**2 + (neighbor.position[1] - goal_node.position[1])**2)
+            neighbor.h = ((neighbor.position[0] - goal_node.position[0])**2 + (neighbor.position[1] - goal_node.position[1])**2)
             # neighbor.h = abs(neighbor.position[0] - goal_node.position[0]) + abs(neighbor.position[1] - goal_node.position[1])
-            neighbor.h = max(abs(neighbor.position[0] - goal_node.position[0]), abs(neighbor.position[1] - goal_node.position[1]))*2
+            # neighbor.h = max(abs(neighbor.position[0] - goal_node.position[0]), abs(neighbor.position[1] - goal_node.position[1]))*2
             neighbor.f = neighbor.g + neighbor.h
             # Check if neighbor is in open list and if it has a lower f value
             if (add_to_open(open, neighbor) == True):
