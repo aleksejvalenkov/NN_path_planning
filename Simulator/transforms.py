@@ -29,3 +29,48 @@ def constrain(x, a, b):
         return -b
     else:
         return x
+    
+def distance(p1, p2):
+    d = np.sqrt(pow((p1[0] - p2[0]), 2) + pow((p1[1] - p2[1]), 2))
+    # d = np.random.normal(loc=d, scale=20, size=None)
+    return d
+
+def point_form_two_rounds(c1, d1, c2, d2):
+    dist = distance(c1, c2)
+    if dist > d1 + d2:
+        op = (dist / (d1 + d2)) + 0.1
+        d1 = d1 * op
+        d2 = d2 * op
+
+
+    x = c1[0] + (c2[0] - c1[0])*((d1**2 - d2**2 + dist**2)/(2*dist**2))
+    k = (c2[1]-c1[1])/(c2[0]-c1[0])
+    y = c1[1] + (k * (x - c1[0]))
+    return [x, y]
+
+def hxy(p1,p2,p3):
+    xa, ya = p1
+    xb, yb = p2
+    xc, yc = p3
+    if ya == yb:
+        return xc, ya
+    elif xa == xb:
+        return xa, yc
+    elif ya == yc:
+        return xb, ya
+    elif xa == xc:
+        return xa, yb
+    else:
+        kab = (ya-yb) / (xa-xb)
+        bab = ya - xa * kab
+        khc = -1 / kab
+        bhc = yc - khc * xc
+        
+        kac = (ya-yc) / (xa-xc)
+        bac = ya - xa * kac
+        khb = -1 / kac
+        bhb = yb - khb * xb
+        
+        x = (bhc - bhb) / (khb - khc)
+        y = khc * x + bhc
+        return round(x, 5), round(y, 5)

@@ -37,13 +37,13 @@ while True:
 
     keys = pg.key.get_pressed()
     if keys[pg.K_w]:
-        robot.teleop(teleop_vec=[0,-2])
+        robot.teleop(teleop_vec=[0,-5])
     if keys[pg.K_s]:
-        robot.teleop(teleop_vec=[0,2])
+        robot.teleop(teleop_vec=[0,5])
     if keys[pg.K_a]:
-        robot.teleop(teleop_vec=[-2,0])
+        robot.teleop(teleop_vec=[-5,0])
     if keys[pg.K_d]:
-        robot.teleop(teleop_vec=[2,0])
+        robot.teleop(teleop_vec=[5,0])
 
 
 
