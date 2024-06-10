@@ -50,7 +50,7 @@ class Robot:
         self.pid_x.sample_time = 0.033
         self.pid_y.sample_time = 0.033
 
-        self.sensor_1 = UWBSensor([20,980])
+        self.sensor_1 = UWBSensor([20,700])
         self.sensor_2 = UWBSensor([500,20])
         self.sensor_3 = UWBSensor([980,980])
 
@@ -86,12 +86,33 @@ class Robot:
         self.p1 = point_form_two_rounds(self.sensor_1.get_pose(), self.d1, self.sensor_2.get_pose(), self.d2)
         self.p2 = point_form_two_rounds(self.sensor_1.get_pose(), self.d1, self.sensor_3.get_pose(), self.d3)
         self.p3 = point_form_two_rounds(self.sensor_2.get_pose(), self.d2, self.sensor_3.get_pose(), self.d3)
-        # print(self.p1)
 
-        x = (self.p1[0] + self.p2[0] +self.p3[0]) / 3
-        y = (self.p1[1] + self.p2[1] +self.p3[1]) / 3
-        # x, y = hxy(self.p1, self.p2, self.p3)
-        return [x, y]
+        V1 = line_from_two_point(self.sensor_1.get_pose(), self.sensor_2.get_pose())
+        L1 = line_from_vec_and_point(V1[:2], self.p1)
+
+        V2 = line_from_two_point(self.sensor_1.get_pose(), self.sensor_3.get_pose())
+        L2 = line_from_vec_and_point(V2[:2], self.p2)
+
+        V3 = line_from_two_point(self.sensor_2.get_pose(), self.sensor_3.get_pose())
+        L3 = line_from_vec_and_point(V3[:2], self.p3)
+
+        self.P1 = point_from_two_lines(L1, L2)
+        self.P2 = point_from_two_lines(L1, L3)
+        self.P3 = point_from_two_lines(L2, L3)
+
+        
+        # print(self.P3)
+        # print(L3)
+
+        # self.P1 = L1[0] * 100 +  L1[2]
+        
+
+        pose = [(self.P1[0] + self.P2[0] +self.P3[0]) / 3 , (self.P1[1] + self.P2[1] +self.P3[1]) / 3]
+
+
+        # print(pose)
+
+        return pose
 
     def teleop(self, teleop_vec):
 
@@ -107,18 +128,18 @@ class Robot:
         self.sensor_2.draw(screen)
         self.sensor_3.draw(screen)
 
-        pg.draw.circle(screen, sensor_color_2, self.sensor_1.get_pose(), self.d1, 1)
+        # pg.draw.circle(screen, sensor_color_2, self.sensor_1.get_pose(), self.d1, 1)
         pg.draw.aaline(screen, sensor_color, self.get_pose(), self.sensor_1.get_pose())
 
-        pg.draw.circle(screen, sensor_color_2, self.sensor_2.get_pose(), self.d2, 1)
+        # pg.draw.circle(screen, sensor_color_2, self.sensor_2.get_pose(), self.d2, 1)
         pg.draw.aaline(screen, sensor_color, self.get_pose(), self.sensor_2.get_pose())
 
-        pg.draw.circle(screen, sensor_color_2, self.sensor_3.get_pose(), self.d3, 1)
+        # pg.draw.circle(screen, sensor_color_2, self.sensor_3.get_pose(), self.d3, 1)
         pg.draw.aaline(screen, sensor_color, self.get_pose(), self.sensor_3.get_pose())
 
-        pg.draw.circle(screen, sensor_color_2, self.p1, 5)
-        pg.draw.circle(screen, sensor_color_2, self.p2, 5)
-        pg.draw.circle(screen, sensor_color_2, self.p3, 5)
+        # pg.draw.circle(screen, sensor_color_2, self.p1, 5)
+        # pg.draw.circle(screen, sensor_color_2, self.p2, 5)
+        # pg.draw.circle(screen, sensor_color_2, self.p3, 5)
 
         pg.draw.circle(screen, way_color, self.est_pose, 5, 5)
 

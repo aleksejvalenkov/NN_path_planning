@@ -32,7 +32,7 @@ def constrain(x, a, b):
     
 def distance(p1, p2):
     d = np.sqrt(pow((p1[0] - p2[0]), 2) + pow((p1[1] - p2[1]), 2))
-    # d = np.random.normal(loc=d, scale=20, size=None)
+    d = np.random.normal(loc=d, scale=10, size=None)
     return d
 
 def point_form_two_rounds(c1, d1, c2, d2):
@@ -48,29 +48,20 @@ def point_form_two_rounds(c1, d1, c2, d2):
     y = c1[1] + (k * (x - c1[0]))
     return [x, y]
 
-def hxy(p1,p2,p3):
-    xa, ya = p1
-    xb, yb = p2
-    xc, yc = p3
-    if ya == yb:
-        return xc, ya
-    elif xa == xb:
-        return xa, yc
-    elif ya == yc:
-        return xb, ya
-    elif xa == xc:
-        return xa, yb
-    else:
-        kab = (ya-yb) / (xa-xb)
-        bab = ya - xa * kab
-        khc = -1 / kab
-        bhc = yc - khc * xc
-        
-        kac = (ya-yc) / (xa-xc)
-        bac = ya - xa * kac
-        khb = -1 / kac
-        bhb = yb - khb * xb
-        
-        x = (bhc - bhb) / (khb - khc)
-        y = khc * x + bhc
-        return round(x, 5), round(y, 5)
+def line_from_vec_and_point(vec, p):
+    A = vec[1]/vec[0]
+    B = -1
+    C = p[1] - A * p[0]
+    return np.array((A, B, C))
+
+def line_from_two_point(p1, p2):
+    A = p1[1] - p2[1]
+    B = p2[0] - p1[0]
+    C = p1[0]*p2[1] - p2[0]*p1[1] 
+    return np.array((A, B, C))
+
+def point_from_two_lines(L1, L2):
+    A = np.array([L1[:2], L2[:2]])
+    B = np.array([-L1[2], -L2[2]]).T
+    X = np.linalg.inv(A) @ B
+    return X.T
