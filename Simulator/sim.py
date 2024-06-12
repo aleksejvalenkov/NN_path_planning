@@ -31,19 +31,26 @@ while True:
             pg.quit()
             sys.exit()
         elif i.type == KEYDOWN:
+            # print(i.key)
             if i.key == 27:
                 pg.quit()
                 sys.exit()
+            if i.key == 13:
+                robot.auto_mode = not robot.auto_mode
+                
+        elif i.type == pg.MOUSEBUTTONDOWN:
+            if i.button == 1:
+                robot.way_point = i.pos
 
     keys = pg.key.get_pressed()
     if keys[pg.K_w]:
-        robot.teleop(teleop_vec=[0,-5])
+        robot.teleop(teleop_vec=[4,0,0])
     if keys[pg.K_s]:
-        robot.teleop(teleop_vec=[0,5])
+        robot.teleop(teleop_vec=[-4,0,0])
     if keys[pg.K_a]:
-        robot.teleop(teleop_vec=[-5,0])
+        robot.teleop(teleop_vec=[0,0,-0.2])
     if keys[pg.K_d]:
-        robot.teleop(teleop_vec=[5,0])
+        robot.teleop(teleop_vec=[0,0,0.2])
 
 
 
@@ -55,7 +62,9 @@ while True:
     screen.fill(silver)
 
     robot.draw(screen)
-    x,y = robot.get_pose()
-    text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}' , True, black)
+    x,y,theta = robot.get_pose()
+    text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
     screen.blit(text, [10,10])
+    text = font.render(f'Robot estimated coordinates: x = {robot.est_robot_pose[0]:.2f}, y = {robot.est_robot_pose[1]:.2f}, theta = {robot.est_robot_pose[2]:.2f}' , True, black)
+    screen.blit(text, [10,25])
     pg.display.update()
