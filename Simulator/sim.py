@@ -3,7 +3,22 @@ import sys
 from pygame.locals import *
 from utils import *
 from transforms import *
+import os
+import pandas as pd
 
+def create_folder(workspace:str, folder:str) -> None:
+    path = os.path.join(workspace, folder)
+    if not os.path.exists(path):
+        os.makedirs(path)
+        print(f"create folder with path {0}".format(path))
+    return path
+
+def get_max_index(path):
+    files = os.listdir(path)
+    print(len(files))
+
+
+    return len(files)
 
 FPS = 30
 silver = (194, 194, 194)
@@ -13,7 +28,13 @@ green = (0, 194, 0)
 blue =  (0, 0, 194)
 
 WINDOW_SIZE = (1000, 1000)
- 
+DATAPATH = '/home/alex/Documents/datasets/VisualPlanerData/iter_1'
+
+index = get_max_index(DATAPATH) + 1
+
+df = pd.DataFrame(columns=['File Name', 'Label'])
+
+
 pg.init()
 screen = pg.display.set_mode(WINDOW_SIZE,RESIZABLE, 32)
 clock = pg.time.Clock()
@@ -24,18 +45,32 @@ font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
 map = Map(WINDOW_SIZE)
 map.generate()
 robot = Robot(map.bool_map)
+record = False
+
  
 while True:
     clock.tick(FPS)
 # Check events
     for i in pg.event.get():
         if i.type == QUIT:
+            csv = df.to_csv(DATAPATH + '/' + 'out.csv', index=False)
             pg.quit()
             sys.exit()
         elif i.type == KEYDOWN:
+            # print(i.key)
             if i.key == 27:
+                csv = df.to_csv(DATAPATH + '/' + 'out.csv', index=False)
                 pg.quit()
                 sys.exit()
+            if i.key == 32:
+                record = not record
+                if record:
+                    print(f'Start recording')
+                else:
+                    print(f'Stop recording')
+                    csv = df.to_csv(DATAPATH + '/' + 'out.csv', index=False)
+            if i.key == 13:
+                robot.auto_mode = not robot.auto_mode
 
     keys = pg.key.get_pressed()
     if keys[pg.K_w]:
@@ -54,6 +89,18 @@ while True:
     robot.update(map)
     
 
+    if record:
+        # print(robot.depth_image)
+        if robot.action is not 6:
+            obs = list(robot.get_waypoint_in_local())
+            obs.extend(list(robot.depth_image))
+            # obs.append(robot.action)
+            data = np.array(obs)
+            print(data)
+            print(f'Saved: {index}')
+            df.loc[len(df)] = [f'{index}.npy', robot.action]
+            np.save(DATAPATH + f'/{index}.npy', data)
+            index += 1
 
 # Update display
     screen.fill(silver)
@@ -66,4 +113,7 @@ while True:
     screen.blit(text, [10,10])
     text = font.render(f'Robot coordinates on map: x = {robot.robot_pose_on_map[0]}, y = {robot.robot_pose_on_map[1]}, code = {robot.robot_pose_on_map[2]}' , True, black)
     screen.blit(text, [10,25])
+    if record:
+        pg.draw.circle(screen, red, (WINDOW_SIZE[0]-20, 20), 10)
+
     pg.display.update()

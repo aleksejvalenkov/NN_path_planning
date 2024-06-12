@@ -9,6 +9,14 @@ import math
 from planning.A_star import solve
 from simple_pid import PID
 
+import torch
+from torch.utils.data.dataset import Dataset
+import torchvision.transforms as transforms
+from torch.utils.data import random_split
+from torch.utils.data import DataLoader
+import torch.nn.functional as F
+import torch.nn as nn
+
 map_color = (100,100,100)
 map_color_2 = (150,150,150)
 robot_color = (0,0,190)
@@ -16,6 +24,56 @@ sensor_color = (0,190,0)
 silver = (194, 194, 194)
 way_color = (200, 50, 50)
 
+
+input_size = 42
+num_classes = 6
+
+class MnistModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linear1 = nn.Linear(input_size, 42)
+        self.linear2 = nn.Linear(42, 30)
+        self.linear3 = nn.Linear(30, 15)
+        self.linear4 = nn.Linear(15, num_classes)
+
+        self.act = nn.ReLU()
+    
+    def forward(self, xb):
+
+        out = self.linear1(xb)
+        out = self.act(out)
+        out = self.linear2(out)
+        out = self.act(out)
+        out = self.linear3(out)
+        out = self.act(out)
+        out = self.linear4(out)
+        return(out)
+    
+    def training_step(self, batch):
+        images, labels = batch
+        out = self(images) ## Generate predictions
+        loss = F.cross_entropy(out, labels) ## Calculate the loss
+        return(loss)
+    
+    def validation_step(self, batch):
+        images, labels = batch
+        out = self(images)
+        loss = F.cross_entropy(out, labels)
+        acc = accuracy(out, labels)
+        return({'val_loss':loss, 'val_acc': acc})
+    
+    def validation_epoch_end(self, outputs):
+        batch_losses = [x['val_loss'] for x in outputs]
+        epoch_loss = torch.stack(batch_losses).mean()
+        batch_accs = [x['val_acc'] for x in outputs]
+        epoch_acc = torch.stack(batch_accs).mean()
+        return({'val_loss': epoch_loss.item(), 'val_acc' : epoch_acc.item()})
+    
+    def epoch_end(self, epoch,result):
+        print("Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(epoch, result['val_loss'], result['val_acc']))
+        
+    
+# model = MnistModel()
 
 class DepthSensor:
     def __init__(self, transform) -> None:
@@ -58,6 +116,7 @@ class DepthSensor:
                         self.range_points[i_ray] = (np.inf, np.inf)
 
             self.matrix[i_ray] = np.sqrt(pow((self.x - self.range_points[i_ray][0]), 2) + pow((self.y - self.range_points[i_ray][1]), 2))
+            self.matrix[self.matrix >= 10000] = 10000
         return self.matrix
 
     def draw(self, screen):
@@ -81,9 +140,6 @@ class DepthSensor:
             pg.draw.rect(screen, (r, r, r), 
                  (rect_size*i, screen_size[1]-rect_size , rect_size, rect_size))
 
-class UWBSensor:
-    def __init__(self) -> None:
-        pass
 
 class Robot:
     def __init__(self, bool_map) -> None:
@@ -94,7 +150,7 @@ class Robot:
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
         self.path = None
-        self.way_point = (13, 13, 2)
+        self.way_point = (500//10, 500//10, 2)
         # print(f'Robot transform: \n {self.transform}')
         #Init Sensors
         self.camera_transform = np.array( 
@@ -105,8 +161,11 @@ class Robot:
         self.depth_camera = DepthSensor(self.transform @ self.camera_transform)
         self.depth_image = None
 
+        self.auto_mode = False
         self.pid_theta = PID(0.5, 0.0001, 0, 0)
-        self.pid_theta.sample_time = 0.033
+        self.pid_theta.sample_time = 0.0033
+
+        self.model = torch.load('/home/alex/Documents/NN_path_planning/nn/model/model_v1.pth')
 
     def update(self, map):
         self.cell_size = round(1/map.scale)
@@ -120,17 +179,36 @@ class Robot:
         if map.resized_map[self.way_point[0]][self.way_point[1]] != 1:
             self.path = solve(map.resized_map, self.robot_pose_on_map, self.way_point)
 
-        action, text = self.get_action_from_path(self.path, self.robot_pose_on_map)
-        print(f'Action: {action}, {text}')
+        # print(self.path)
+        # self.action, text = self.get_action_from_path(self.path, self.robot_pose_on_map)
+        # print(f'Action: {self.action}, {text}')
+        # print(self.get_waypoint_in_local())
+        self.action = self.nn_brain(self.get_observation(self.get_waypoint_in_local(), self.depth_image))
+        print(f'Action: {self.action}')
 
-        self.controll(action)
+        if self.auto_mode:
+            self.controll(self.action)
+
+    def get_observation(self, goal, depth_image):
+        obs = list(goal)
+        obs.extend(list(depth_image))
+        obs = np.array(obs)
+        return obs
+    
+    def nn_brain(self, obs):
+        obs /= 10000.0
+        img_as_tensor = torch.from_numpy(obs.astype('float32'))
+        output = self.model.forward(img_as_tensor)
+        action = F.softmax(output).detach().numpy().argmax()
+        return action
 
     def controll(self, action):
         d_theta = 0.0
         self.throttle = 0.0
         code = self.code_from_theta(self.theta)
         self.robot_pose_on_map = (int(self.x//10), int(self.y//10), code)
-        d_theta = self.get_global_angle(self.path, self.robot_pose_on_map)
+        # d_theta = self.get_global_angle(self.path, self.robot_pose_on_map)
+        d_theta = self.get_global_angle_2(action, self.robot_pose_on_map)
         if action == 1:
             self.throttle = 1
         elif action == 3:
@@ -141,7 +219,7 @@ class Robot:
             self.throttle = 0.0
         elif action == 4:
             self.throttle = 0.0
-        elif action == 5:
+        elif action == 5 or action == 6:
             self.throttle = 0.0
 
         # print(d_theta)
@@ -157,7 +235,7 @@ class Robot:
         # print('self.theta ', self.theta)
         # print('     theta ', theta)
         self.theta_speed = constrain(self.pid_theta(theta), -0.1, 0.1)
-        if action != 5:
+        if action != 5 and action != 6:
             self.teleop(teleop_vec=[self.throttle,0,self.theta_speed])
 
     def teleop(self, teleop_vec):
@@ -183,6 +261,14 @@ class Robot:
 
     def get_pose(self):
         return self.x , self.y, self.theta
+    
+    def get_waypoint_in_local(self):
+        way_point = np.array(self.way_point) * 10
+        way_point[2] = 1
+        way_point_loc = np.linalg.inv(self.transform) @ way_point.T
+        way_point_loc = way_point_loc[:2]
+        # print(way_point_loc)
+        return way_point_loc.T
     
     def code_from_theta(self, theta):
         code = 0
@@ -243,7 +329,7 @@ class Robot:
                 new_code = 1
             if new_code == -1:
                 new_code = 7
-            print(d)
+            # print(d)
             if d[0] == 0 and  d[1] == 1:
                 angle = math.pi / 2
             elif d[0] == 1 and  d[1] == 1:
@@ -267,6 +353,30 @@ class Robot:
                 angle = self.theta_from_code(new_code)
             elif d[0] == 0 and  d[1] == 0 and d[2] == -1:
                 angle = self.theta_from_code(new_code)
+
+        return angle
+    
+    def get_global_angle_2(self, action, robot_pose):
+        angle = 0.0
+        if action == 0:
+            new_code = robot_pose[2] + 1
+        if action == 1:
+            new_code = robot_pose[2] + 1
+        if action == 2:
+            new_code = robot_pose[2]
+        if action == 3:
+            new_code = robot_pose[2] - 1
+        if action == 4:
+            new_code = robot_pose[2] - 1
+        if action == 5 or action == 6:
+            new_code = robot_pose[2]
+
+        if new_code == 8:
+            new_code = 1
+        if new_code == -1:
+            new_code = 7
+
+        angle = self.theta_from_code(new_code)
 
         return angle
 
@@ -296,9 +406,12 @@ class Robot:
                 if d[2] == -1:
                     action = 3
                     text = 'forward and rot 45*'
-        else:
+        elif path == []:
             action = 5
             text = 'stay'
+        elif path == None:
+            action = 6
+            text = 'emergency stop'
 
         return action, text
 
