@@ -8,6 +8,7 @@ import copy
 import math
 from planning.A_star import solve
 from simple_pid import PID
+from kalman import tracker1
 
 map_color = (100,100,100)
 map_color_2 = (150,150,150)
@@ -43,6 +44,9 @@ class Robot:
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
         self.way_point = (500, 500)
+
+        self.pred_robot_pose = [self.x , self.y, self.theta]
+        self.robot_tracker = tracker1()
 
 
         self.robot_sensor_1_transform = np.array( 
@@ -100,17 +104,23 @@ class Robot:
               (self.est_pose_sensor_1[1] + self.est_pose_sensor_2[1])/2,\
                   -np.arctan2((self.est_pose_sensor_1[0] - self.est_pose_sensor_2[0]),(self.est_pose_sensor_1[1] - self.est_pose_sensor_2[1]))
 
+        self.robot_tracker.predict()
+        self.robot_tracker.update(self.est_robot_pose[:2])
+        x = self.robot_tracker.x
+        mean = (x[0, 0], x[2, 0])
+        self.pred_robot_pose[0] = mean[0]
+        self.pred_robot_pose[1] = mean[1]
 
         if self.auto_mode:
-            self.pid_controll()
+            self.pid_controll(self.pred_robot_pose)
 
-    def pid_controll(self):
-        d = 4
+    def pid_controll(self, pose):
+        d = 5
         way_point = self.way_point
-        if way_point[0] - d <= self.x <= way_point[0] + d and way_point[1] - d <= self.y <= way_point[1] + d :
+        if way_point[0] - d <= pose[0] <= way_point[0] + d and way_point[1] - d <= pose[1] <= way_point[1] + d :
             print('In goal')
         else:
-            theta_setpoint = np.arctan2(-(self.est_robot_pose[1] - self.way_point[1]),-(self.est_robot_pose[0] - self.way_point[0]))
+            theta_setpoint = np.arctan2(-(pose[1] - self.way_point[1]),-(pose[0] - self.way_point[0]))
             self.pid_theta.setpoint = theta_setpoint
             self.pid_throttle.setpoint = 0
 
