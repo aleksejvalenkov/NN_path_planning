@@ -28,7 +28,7 @@ green = (0, 194, 0)
 blue =  (0, 0, 194)
 
 WINDOW_SIZE = (1000, 1000)
-DATAPATH = '/home/alex/Documents/datasets/VisualPlanerData/iter_1'
+DATAPATH = '/home/alex/Documents/datasets/VisualPlanerData/iter_2'
 
 index = get_max_index(DATAPATH) + 1
 

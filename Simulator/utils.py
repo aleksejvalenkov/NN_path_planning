@@ -31,33 +31,65 @@ num_classes = 6
 class MnistModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.linear1 = nn.Linear(input_size, 42)
-        self.linear2 = nn.Linear(42, 30)
-        self.linear3 = nn.Linear(30, 15)
-        self.linear4 = nn.Linear(15, num_classes)
+        self.loss_fn = nn.CrossEntropyLoss()
 
-        self.act = nn.ReLU()
+        self.conv0 = nn.Conv2d(1, 10, 3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(10, 20, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(20, 40, 3, stride=1, padding=1)
+
+        self.flat = nn.Flatten()
+        self.linear1 = nn.Linear(42, 40)
+        self.linear2 = nn.Linear(40, 30)
+        self.linear3 = nn.Linear(30, 20)
+        self.linear4 = nn.Linear(20, 10)
+        self.linear5 = nn.Linear(10, num_classes)
+
+        self.act = nn.LeakyReLU(0.2)
+        self.maxpool = nn.MaxPool2d(2,2)
+        self.adaptivepool = nn.AdaptiveAvgPool2d((1,1))
     
-    def forward(self, xb):
+    def forward(self, x, g):
+        # print(xb.shape)
+        out = self.conv0(x)
+        out = self.act(out)
+        # print(out.shape)
+        out = self.conv1(out)
+        out = self.act(out)
+        # print(out.shape)
+        out = self.conv2(out)
+        out = self.act(out)
+        # print(out.shape)
 
-        out = self.linear1(xb)
+        out = self.adaptivepool(out)
+        # print(out.shape)
+        out = torch.cat((out, g), 1)
+        # print(out.shape)
+
+        out = self.flat(out)
+        out = self.linear1(out)
         out = self.act(out)
         out = self.linear2(out)
         out = self.act(out)
         out = self.linear3(out)
         out = self.act(out)
         out = self.linear4(out)
+        out = self.act(out)
+        out = self.linear5(out)
         return(out)
     
     def training_step(self, batch):
-        images, labels = batch
-        out = self(images) ## Generate predictions
-        loss = F.cross_entropy(out, labels) ## Calculate the loss
+        images, goals, labels = batch
+        out = self(images, goals) ## Generate predictions
+        loss = self.loss_fn(out, labels) ## Calculate the loss
         return(loss)
     
     def validation_step(self, batch):
-        images, labels = batch
-        out = self(images)
+        images, goals, labels = batch
+        out = self(images, goals)
+        # labels = F.one_hot(labels, num_classes)
+        # out = torch.argmax(out, dim=1) 
+        # out = torch.argmax(out, dim=1) 
+        # print(out.shape, labels.shape)
         loss = F.cross_entropy(out, labels)
         acc = accuracy(out, labels)
         return({'val_loss':loss, 'val_acc': acc})
@@ -72,8 +104,6 @@ class MnistModel(nn.Module):
     def epoch_end(self, epoch,result):
         print("Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(epoch, result['val_loss'], result['val_acc']))
         
-    
-# model = MnistModel()
 
 class DepthSensor:
     def __init__(self, transform) -> None:
@@ -165,7 +195,7 @@ class Robot:
         self.pid_theta = PID(0.5, 0.0001, 0, 0)
         self.pid_theta.sample_time = 0.0033
 
-        self.model = torch.load('/home/alex/Documents/NN_path_planning/nn/model/model_v1.pth')
+        self.model = torch.load('/home/alex/Documents/NN_path_planning/nn/model/model_v2.pth')
 
     def update(self, map):
         self.cell_size = round(1/map.scale)
@@ -182,7 +212,9 @@ class Robot:
         # print(self.path)
         # self.action, text = self.get_action_from_path(self.path, self.robot_pose_on_map)
         # print(f'Action: {self.action}, {text}')
+        
         # print(self.get_waypoint_in_local())
+
         self.action = self.nn_brain(self.get_observation(self.get_waypoint_in_local(), self.depth_image))
         print(f'Action: {self.action}')
 
@@ -196,9 +228,26 @@ class Robot:
         return obs
     
     def nn_brain(self, obs):
-        obs /= 10000.0
-        img_as_tensor = torch.from_numpy(obs.astype('float32'))
-        output = self.model.forward(img_as_tensor)
+        img_as_img = obs
+        goal_np = img_as_img[:2]
+        # goal_np = np.array([0.,0.])
+        goal_np /= 1000.0
+        img_as_img = img_as_img[2:]
+        img_as_img /= 10000.0
+        img_as_tensor = torch.from_numpy(img_as_img.astype('float32'))
+        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+        img_as_tensor = torch.cat(tuple([img_as_tensor for item in range(len(img_as_img))]), 0)
+        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+
+        goal_as_tensor = torch.from_numpy(goal_np.astype('float32'))
+        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
+        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
+        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 0)
+
+        print(img_as_tensor.shape, goal_as_tensor.shape)
+        output = self.model.forward(img_as_tensor, goal_as_tensor)
+        print(output)
         action = F.softmax(output).detach().numpy().argmax()
         return action
 
@@ -226,9 +275,9 @@ class Robot:
         self.pid_theta.setpoint = d_theta
 
         if self.theta > math.pi - math.pi / 4 and d_theta < 0:
-            theta = (self.theta * -1) - math.pi / 2
+            theta = (self.theta * -1) - math.pi / 4
         elif self.theta < -math.pi + math.pi / 4 and d_theta > 0:
-            theta = (self.theta * -1) + math.pi / 2
+            theta = (self.theta * -1) + math.pi / 4
         else:
             theta = self.theta
         
