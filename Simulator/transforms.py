@@ -32,7 +32,7 @@ def constrain(x, a, b):
     
 def distance(p1, p2):
     d = np.sqrt(pow((p1[0] - p2[0]), 2) + pow((p1[1] - p2[1]), 2))
-    d = np.random.normal(loc=d, scale=10, size=None)
+    d = np.random.normal(loc=d, scale=5, size=None)
     return d
 
 def point_form_two_rounds(c1, d1, c2, d2):

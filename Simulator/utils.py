@@ -37,9 +37,9 @@ class UWBSensor:
         return [self.x, self.y]
 
 class Robot:
-    def __init__(self) -> None:
+    def __init__(self, s1, s2, s3) -> None:
         self.robot_radius = 25
-        self.x , self.y, self.theta = [100,100, 0]
+        self.x , self.y, self.theta = [400,400, 0]
         self.est_robot_pose = [0, 0, 0]
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
@@ -47,7 +47,7 @@ class Robot:
 
         self.pred_robot_pose = [self.x , self.y, self.theta]
         self.robot_tracker = tracker1()
-
+        self.robot_tracker.x = np.array([[self.x, 0, self.y, 0]]).T
 
         self.robot_sensor_1_transform = np.array( 
             [[  1., 0., 0. ],
@@ -82,6 +82,10 @@ class Robot:
         self.sensor_1 = UWBSensor(self.sensor_1_transform)
         self.sensor_2 = UWBSensor(self.sensor_2_transform)
         self.sensor_3 = UWBSensor(self.sensor_3_transform)
+
+        self.sensor_1_nr = s1
+        self.sensor_2_nr = s2
+        self.sensor_3_nr = s3
 
         self.throttle = 0.0
         self.theta_speed = 0.0
@@ -137,21 +141,23 @@ class Robot:
             self.teleop([self.throttle, 0, self.theta_speed])
 
     def get_sensor_pose(self, sensor):
-        self.d1 = distance(sensor.get_pose(), self.sensor_1.get_pose()) 
+        # Ground truth distance (physical process)
+        self.d1 = distance(sensor.get_pose(), self.sensor_1.get_pose())
         self.d2 = distance(sensor.get_pose(), self.sensor_2.get_pose())
         self.d3 = distance(sensor.get_pose(), self.sensor_3.get_pose())
 
-        self.p1 = point_form_two_rounds(self.sensor_1.get_pose(), self.d1, self.sensor_2.get_pose(), self.d2)
-        self.p2 = point_form_two_rounds(self.sensor_1.get_pose(), self.d1, self.sensor_3.get_pose(), self.d3)
-        self.p3 = point_form_two_rounds(self.sensor_2.get_pose(), self.d2, self.sensor_3.get_pose(), self.d3)
+        # Estimate poses from undefined position of the markers (mathematical process)
+        self.p1 = point_form_two_rounds(self.sensor_1_nr.get_pose(), self.d1, self.sensor_2_nr.get_pose(), self.d2)
+        self.p2 = point_form_two_rounds(self.sensor_1_nr.get_pose(), self.d1, self.sensor_3_nr.get_pose(), self.d3)
+        self.p3 = point_form_two_rounds(self.sensor_2_nr.get_pose(), self.d2, self.sensor_3_nr.get_pose(), self.d3)
 
-        V1 = line_from_two_point(self.sensor_1.get_pose(), self.sensor_2.get_pose())
+        V1 = line_from_two_point(self.sensor_1_nr.get_pose(), self.sensor_2_nr.get_pose())
         L1 = line_from_vec_and_point(V1[:2], self.p1)
 
-        V2 = line_from_two_point(self.sensor_1.get_pose(), self.sensor_3.get_pose())
+        V2 = line_from_two_point(self.sensor_1_nr.get_pose(), self.sensor_3_nr.get_pose())
         L2 = line_from_vec_and_point(V2[:2], self.p2)
 
-        V3 = line_from_two_point(self.sensor_2.get_pose(), self.sensor_3.get_pose())
+        V3 = line_from_two_point(self.sensor_2_nr.get_pose(), self.sensor_3_nr.get_pose())
         L3 = line_from_vec_and_point(V3[:2], self.p3)
 
         self.P1 = point_from_two_lines(L1, L2)
