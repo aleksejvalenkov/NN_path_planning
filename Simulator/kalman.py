@@ -26,7 +26,7 @@ Q_std = 5
 
 def tracker1():
     tracker = KalmanFilter(dim_x=4, dim_z=2)
-    dt = 0.1   # time step
+    dt = 0.25   # time step
     s = 1
     tracker.F = np.array([[s, dt, 0,  0],
                           [0,  s, 0,  0],

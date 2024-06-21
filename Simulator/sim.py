@@ -1,5 +1,6 @@
 import pygame as pg
 import sys
+import copy
 import random
 from pygame.locals import *
 from utils import *
@@ -13,7 +14,7 @@ def move_robot(robot):
     global way_points
 
     # robot.teleop(teleop_vec=[1,0,0])
-    s = 1
+    s = 5
     d = 0
     if way_points:
         way_point = way_points[0]
@@ -27,7 +28,33 @@ def move_robot(robot):
 
         robot.teleop(teleop_vec=[x_s, y_s, 0])
 
-    pass
+def gen_robots(sensor_1_transform, sensor_2_transform, sensor_3_transform):
+    sensor_1_transform = copy.copy(sensor_1_transform)
+    sensor_2_transform = copy.copy(sensor_2_transform)
+    sensor_3_transform = copy.copy(sensor_3_transform)
+
+    sensor_1_transform[0][2] += random.randint(-std//2, std//2)
+    sensor_1_transform[1][2] += random.randint(-std//2, std//2)
+
+    sensor_2_transform[0][2] += random.randint(-std//2, std//2)
+    sensor_2_transform[1][2] += random.randint(-std//2, std//2)
+
+    sensor_3_transform[0][2] += random.randint(-std//2, std//2)
+    sensor_3_transform[1][2] += random.randint(-std//2, std//2)
+
+    sensor_1 = UWBSensor(sensor_1_transform)
+    sensor_2 = UWBSensor(sensor_2_transform)
+    sensor_3 = UWBSensor(sensor_3_transform)
+    # init objects
+    robot = Robot(sensor_1, sensor_2, sensor_3)
+
+    return robot
+
+def gen_particles(N, sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform):
+    particles = []
+    for i in range(N):
+        particles.append(gen_robots(sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform))
+    return particles
 
 FPS = 30
 silver = (194, 194, 194)
@@ -68,6 +95,7 @@ sensor_3_init_transform = np.array(
         [  0., 0., 1. ]]
         )
 
+
  
 def main():
     recording = False
@@ -77,21 +105,26 @@ def main():
     clock = pg.time.Clock()
     font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
 
-    sensor_1_init_transform[0][2] += random.randint(-std//2, std//2)
-    sensor_1_init_transform[1][2] += random.randint(-std//2, std//2)
+    # sensor_1_init_transform[0][2] += random.randint(-std//2, std//2)
+    # sensor_1_init_transform[1][2] += random.randint(-std//2, std//2)
 
-    sensor_2_init_transform[0][2] += random.randint(-std//2, std//2)
-    sensor_2_init_transform[1][2] += random.randint(-std//2, std//2)
+    # sensor_2_init_transform[0][2] += random.randint(-std//2, std//2)
+    # sensor_2_init_transform[1][2] += random.randint(-std//2, std//2)
 
-    sensor_3_init_transform[0][2] += random.randint(-std//2, std//2)
-    sensor_3_init_transform[1][2] += random.randint(-std//2, std//2)
+    # sensor_3_init_transform[0][2] += random.randint(-std//2, std//2)
+    # sensor_3_init_transform[1][2] += random.randint(-std//2, std//2)
+
+    print(f'Sensor 1 init at: \n{sensor_1_init_transform}')
+    print(f'Sensor 2 init at: \n{sensor_2_init_transform}')
+    print(f'Sensor 3 init at: \n{sensor_3_init_transform}')
 
     sensor_1 = UWBSensor(sensor_1_init_transform)
     sensor_2 = UWBSensor(sensor_2_init_transform)
     sensor_3 = UWBSensor(sensor_3_init_transform)
     # init objects
-    robot = Robot(sensor_1, sensor_2, sensor_3)
+    robot_main = Robot(sensor_1, sensor_2, sensor_3)
 
+    particles = gen_particles(1000, sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform)
 
     run = True
     while run:
@@ -111,7 +144,7 @@ def main():
                     run = False
                     return
                 if i.key == 13:
-                    robot.auto_mode = not robot.auto_mode
+                    robot_main.auto_mode = not robot_main.auto_mode
                 if i.key == 32:
                     recording = not recording
                 if i.key == 112:
@@ -119,44 +152,79 @@ def main():
                     
             elif i.type == pg.MOUSEBUTTONDOWN:
                 if i.button == 1:
-                    robot.way_point = i.pos
+                    robot_main.way_point = i.pos
 
         keys = pg.key.get_pressed()
         if keys[pg.K_w]:
-            robot.teleop(teleop_vec=[4,0,0])
+            robot_main.teleop(teleop_vec=[4,0,0])
         if keys[pg.K_s]:
-            robot.teleop(teleop_vec=[-4,0,0])
+            robot_main.teleop(teleop_vec=[-4,0,0])
         if keys[pg.K_a]:
-            robot.teleop(teleop_vec=[0,0,-0.2])
+            robot_main.teleop(teleop_vec=[0,0,-0.2])
         if keys[pg.K_d]:
-            robot.teleop(teleop_vec=[0,0,0.2])
+            robot_main.teleop(teleop_vec=[0,0,0.2])
 
 
 
         # Render scene
 
-        robot.update()
+        robot_main.update()
+
+        for robot in particles:
+            robot.update()
+
         if calib_movement:
-            move_robot(robot)
+            if way_points:
+                for robot in particles:
+                    move_robot(robot)
+                    robot.errors.append(distance(robot.get_pose() , robot.est_robot_pose))
+            else:
+                norms = []
+                for robot in particles:
+                    errors = np.array(robot.errors)
+                    n = np.linalg.norm(errors)
+                    norms.append(n)
+                    # print(n)
+                if norms:
+                    # print(norms)
+                    norms = np.nan_to_num(norms, nan=10000.)
+                    # print(norms)
+                    h = np.array(norms)
+                    print(np.argmin(h), np.min(h))
+                    id = np.argmin(h)
+                    print(f'Sensor 1 calib at: \n{particles[id].sensor_1_nr.transform}')
+                    print(f'Sensor 2 calib at: \n{particles[id].sensor_2_nr.transform}')
+                    print(f'Sensor 3 calib at: \n{particles[id].sensor_3_nr.transform}')
+                    robot_main.sensor_1_nr = UWBSensor(particles[id].sensor_1_nr.transform)
+                    robot_main.sensor_2_nr = UWBSensor(particles[id].sensor_2_nr.transform)
+                    robot_main.sensor_3_nr = UWBSensor(particles[id].sensor_3_nr.transform)
+
+
+                norms = []
+                particles = []
 
         if recording:
-            robot_poses_truth_x.append(robot.get_pose()[0])
-            robot_poses_truth_y.append(robot.get_pose()[1])
+            robot_poses_truth_x.append(robot_main.get_pose()[0])
+            robot_poses_truth_y.append(robot_main.get_pose()[1])
 
-            robot_poses_est_x.append(robot.est_robot_pose[0])
-            robot_poses_est_y.append(robot.est_robot_pose[1])
+            robot_poses_est_x.append(robot_main.est_robot_pose[0])
+            robot_poses_est_y.append(robot_main.est_robot_pose[1])
 
-            robot_poses_pred_x.append(robot.pred_robot_pose[0])
-            robot_poses_pred_y.append(robot.pred_robot_pose[1])
+            robot_poses_pred_x.append(robot_main.pred_robot_pose[0])
+            robot_poses_pred_y.append(robot_main.pred_robot_pose[1])
 
         # Update display
         screen.fill(silver)
 
-        robot.draw(screen)
-        x,y,theta = robot.get_pose()
+        robot_main.draw(screen)
+
+        for robot in particles:
+            robot.draw(screen)
+
+        x,y,theta = robot_main.get_pose()
         text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
         screen.blit(text, [10,10])
-        text = font.render(f'Robot estimated coordinates: x = {robot.est_robot_pose[0]:.2f}, y = {robot.est_robot_pose[1]:.2f}, theta = {robot.est_robot_pose[2]:.2f}' , True, black)
+        text = font.render(f'Robot estimated coordinates: x = {robot_main.est_robot_pose[0]:.2f}, y = {robot_main.est_robot_pose[1]:.2f}, theta = {robot_main.est_robot_pose[2]:.2f}' , True, black)
         screen.blit(text, [10,25])
         if recording:
             pg.draw.circle(screen, red, (WINDOW_SIZE[0]-20, 20), 10)

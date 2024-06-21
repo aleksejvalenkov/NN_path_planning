@@ -49,6 +49,8 @@ class Robot:
         self.robot_tracker = tracker1()
         self.robot_tracker.x = np.array([[self.x, 0, self.y, 0]]).T
 
+        self.errors = []
+
         self.robot_sensor_1_transform = np.array( 
             [[  1., 0., 0. ],
              [  0., 1., self.robot_radius ],
@@ -136,15 +138,15 @@ class Robot:
                 theta = self.est_robot_pose[2]
 
             self.theta_speed = -constrain(self.pid_theta(theta), -0.1, 0.1)
-            self.throttle = constrain(self.pid_throttle(-distance(self.get_pose()[:2], self.way_point)), 0, 4)
+            self.throttle = constrain(self.pid_throttle(-distance(self.est_robot_pose [:2], self.way_point)), 0, 4)
             # print(self.throttle, self.theta_speed)
             self.teleop([self.throttle, 0, self.theta_speed])
 
     def get_sensor_pose(self, sensor):
         # Ground truth distance (physical process)
-        self.d1 = distance(sensor.get_pose(), self.sensor_1.get_pose())
-        self.d2 = distance(sensor.get_pose(), self.sensor_2.get_pose())
-        self.d3 = distance(sensor.get_pose(), self.sensor_3.get_pose())
+        self.d1 = distance_with_noise(sensor.get_pose(), self.sensor_1.get_pose())
+        self.d2 = distance_with_noise(sensor.get_pose(), self.sensor_2.get_pose())
+        self.d3 = distance_with_noise(sensor.get_pose(), self.sensor_3.get_pose())
 
         # Estimate poses from undefined position of the markers (mathematical process)
         self.p1 = point_form_two_rounds(self.sensor_1_nr.get_pose(), self.d1, self.sensor_2_nr.get_pose(), self.d2)
