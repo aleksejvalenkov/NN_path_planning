@@ -28,32 +28,44 @@ def move_robot(robot):
 
         robot.teleop(teleop_vec=[x_s, y_s, 0])
 
-def gen_robots(sensor_1_transform, sensor_2_transform, sensor_3_transform):
+def gen_robots(sensor_1_transform, sensor_2_transform, sensor_3_transform, std, x, y):
     sensor_1_transform = copy.copy(sensor_1_transform)
     sensor_2_transform = copy.copy(sensor_2_transform)
     sensor_3_transform = copy.copy(sensor_3_transform)
 
-    sensor_1_transform[0][2] += random.randint(-std//2, std//2)
-    sensor_1_transform[1][2] += random.randint(-std//2, std//2)
+    dx = np.random.normal(loc=0, scale=std, size=None)
+    dy = np.random.normal(loc=0, scale=std, size=None)
 
-    sensor_2_transform[0][2] += random.randint(-std//2, std//2)
-    sensor_2_transform[1][2] += random.randint(-std//2, std//2)
+    sensor_1_transform[0][2] += dx
+    sensor_1_transform[1][2] += dy
 
-    sensor_3_transform[0][2] += random.randint(-std//2, std//2)
-    sensor_3_transform[1][2] += random.randint(-std//2, std//2)
+    sensor_2_transform[0][2] += dx
+    sensor_2_transform[1][2] += dy
+
+    sensor_3_transform[0][2] += dx
+    sensor_3_transform[1][2] += dy
+
+    # sensor_1_transform[0][2] += random.randint(-std//2, std//2)
+    # sensor_1_transform[1][2] += random.randint(-std//2, std//2)
+
+    # sensor_2_transform[0][2] += random.randint(-std//2, std//2)
+    # sensor_2_transform[1][2] += random.randint(-std//2, std//2)
+
+    # sensor_3_transform[0][2] += random.randint(-std//2, std//2)
+    # sensor_3_transform[1][2] += random.randint(-std//2, std//2)
 
     sensor_1 = UWBSensor(sensor_1_transform)
     sensor_2 = UWBSensor(sensor_2_transform)
     sensor_3 = UWBSensor(sensor_3_transform)
     # init objects
-    robot = Robot(sensor_1, sensor_2, sensor_3)
+    robot = Robot(sensor_1, sensor_2, sensor_3, x, y)
 
     return robot
 
-def gen_particles(N, sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform):
+def gen_particles(N, sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform, std = 20, x=400, y=400):
     particles = []
     for i in range(N):
-        particles.append(gen_robots(sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform))
+        particles.append(gen_robots(sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform, std=std, x=x, y=y))
     return particles
 
 FPS = 30
@@ -77,29 +89,34 @@ robot_tracker = tracker1()
 
 way_points = [[600,400], [600,600], [400,600], [400,400]]
 
-std = 50
+# std = 50
+
+dx = 200
+dy = 100
 
 sensor_1_init_transform = np.array( 
-        [[  1., 0., 500. ],
-        [  0., 1., 20. ],
+        [[  1., 0., 500. + dx ],
+        [  0., 1., 20. + dy ],
         [  0., 0., 1. ]]
         )
 sensor_2_init_transform = np.array( 
-        [[  1., 0., 20. ],
-        [  0., 1., 980. ],
+        [[  1., 0., 20. + dx ],
+        [  0., 1., 980. + dy ],
         [  0., 0., 1. ]]
         )
 sensor_3_init_transform = np.array( 
-        [[  1., 0., 960. ],
-        [  0., 1., 960. ],
+        [[  1., 0., 960. + dx ],
+        [  0., 1., 960. + dy ],
         [  0., 0., 1. ]]
         )
 
 
  
 def main():
+    global way_points
     recording = False
     calib_movement = False
+    calib_movement_2 = False
     pg.init()
     screen = pg.display.set_mode(WINDOW_SIZE,RESIZABLE, 32)
     clock = pg.time.Clock()
@@ -124,9 +141,11 @@ def main():
     # init objects
     robot_main = Robot(sensor_1, sensor_2, sensor_3)
 
-    particles = gen_particles(1000, sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform)
+    particles = gen_particles(500, sensor_1_init_transform, sensor_2_init_transform, sensor_3_init_transform)
 
     run = True
+
+    step = 0
     while run:
         clock.tick(FPS)
         # Check events
@@ -138,7 +157,7 @@ def main():
                 return
             elif i.type == KEYDOWN:
                 # print(i.key)
-                if i.key == 27:
+                if i.key == 27 or i.key == 113:
                     pg.quit()
                     # sys.exit()
                     run = False
@@ -170,10 +189,111 @@ def main():
 
         robot_main.update()
 
-        for robot in particles:
-            robot.update()
 
         if calib_movement:
+            if way_points:
+                measurements = []
+                for robot in particles:
+                    move_robot(robot)
+                    measurements.append(distance(robot.get_pose(), robot.est_robot_pose))
+                # print(measurements)
+                MAX = np.max(measurements)
+                measurements = np.nan_to_num(measurements, nan=10000.)
+                particles_step = []
+
+                
+                rand_list = []
+                for i in range(len(measurements)):
+                    n = (MAX) // measurements[i]
+                    rand_list.extend([i]*int(n))
+
+                # print(rand_list)
+
+                N = 10
+                for i in range(N):
+                    k = random.randint(0, len(rand_list)-1)
+                    index = rand_list[k]
+                    particles_new = gen_particles((len(particles)//N)-1, 
+                                                        particles[index].sensor_1_nr.transform, 
+                                                        particles[index].sensor_2_nr.transform, 
+                                                        particles[index].sensor_3_nr.transform,
+                                                        std = measurements[index],
+                                                        x = particles[index].x, 
+                                                        y = particles[index].y )
+                    particles_new.append(particles[index])
+                    # for robot in particles_step:
+                    #     robot.update()
+
+                    particles_step.extend(particles_new)
+
+
+
+                # weight = copy.copy(measurements)
+                # S = np.sum(weight)
+
+                # N = len(particles)
+                
+                # for i in range(N):
+                #     measurements[i] = 1/measurements[i]
+
+                # for i in range(N):
+                #     weight[i] = weight[i]/S
+
+                
+                # index = random.randint(0, N-1)
+                # betta = 0
+                # N = 10
+                # for i in range(N):
+                #     betta = betta + random.uniform(0, 2*max(weight))
+                #     while betta > weight[index]:
+                #         betta = betta - weight[index]
+                #         index = (index + 1)%N # индекс изменяется в цикле от 0 до N
+
+                #     particles_new = gen_particles(len(particles)//N, 
+                #                                         particles[index].sensor_1_nr.transform, 
+                #                                         particles[index].sensor_2_nr.transform, 
+                #                                         particles[index].sensor_3_nr.transform,
+                #                                         std = measurements[index]//2,
+                #                                         x = particles[index].x, 
+                #                                         y = particles[index].y )
+                #     for robot in particles_new:
+                #         # robot.transform = particles[index].transform
+                #         # robot.x = particles[index].x
+                #         # robot.y = particles[index].y
+                #         robot.update()
+                    
+                #     particles_step.extend(particles_new)
+
+
+                # N = 10
+                # for i in range(N):
+                #     id = np.argmin(measurements)
+                #     particles_new = gen_particles(len(particles)//N, 
+                #                                         particles[id].sensor_1_nr.transform, 
+                #                                         particles[id].sensor_2_nr.transform, 
+                #                                         particles[id].sensor_3_nr.transform,
+                #                                         std = measurements[id]//1.5)
+                #     for robot in particles_new:
+                #         robot.transform = particles[id].transform
+                #         robot.x = particles[id].x
+                #         robot.y = particles[id].y
+                #         robot.update()
+
+                    # particles_step.extend(particles_new)
+                    # # particles_step.append(particles[id])
+                    # measurements[id] = 10000.
+
+
+                # print(len(particles_step))
+                particles = particles_step
+                # for robot in particles:
+                #     robot.update()
+            else:
+                calib_movement = False
+                calib_movement_2 = True
+                way_points = [[600,400], [600,600], [400,600], [400,400]]
+
+        if calib_movement_2:
             if way_points:
                 for robot in particles:
                     move_robot(robot)
@@ -187,21 +307,25 @@ def main():
                     # print(n)
                 if norms:
                     # print(norms)
-                    norms = np.nan_to_num(norms, nan=10000.)
+                    norms = np.nan_to_num(norms, nan=1000.)
                     # print(norms)
                     h = np.array(norms)
                     print(np.argmin(h), np.min(h))
                     id = np.argmin(h)
+
                     print(f'Sensor 1 calib at: \n{particles[id].sensor_1_nr.transform}')
                     print(f'Sensor 2 calib at: \n{particles[id].sensor_2_nr.transform}')
                     print(f'Sensor 3 calib at: \n{particles[id].sensor_3_nr.transform}')
                     robot_main.sensor_1_nr = UWBSensor(particles[id].sensor_1_nr.transform)
                     robot_main.sensor_2_nr = UWBSensor(particles[id].sensor_2_nr.transform)
                     robot_main.sensor_3_nr = UWBSensor(particles[id].sensor_3_nr.transform)
+                    norms = []
+                    particles = []
+                    calib_movement_2 = False
 
 
-                norms = []
-                particles = []
+        for robot in particles:
+            robot.update()
 
         if recording:
             robot_poses_truth_x.append(robot_main.get_pose()[0])
@@ -212,7 +336,8 @@ def main():
 
             robot_poses_pred_x.append(robot_main.pred_robot_pose[0])
             robot_poses_pred_y.append(robot_main.pred_robot_pose[1])
-
+        
+        step += 1
         # Update display
         screen.fill(silver)
 

@@ -33,7 +33,7 @@ def constrain(x, a, b):
 def distance_with_noise(p1, p2):
     d = np.sqrt(pow((p1[0] - p2[0]), 2) + pow((p1[1] - p2[1]), 2))
     d = np.random.normal(loc=d, scale=3, size=None)
-    return d
+    return abs(d)
 
 def distance(p1, p2):
     d = np.sqrt(pow((p1[0] - p2[0]), 2) + pow((p1[1] - p2[1]), 2))

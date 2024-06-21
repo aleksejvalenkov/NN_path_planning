@@ -37,9 +37,11 @@ class UWBSensor:
         return [self.x, self.y]
 
 class Robot:
-    def __init__(self, s1, s2, s3) -> None:
+    def __init__(self, s1, s2, s3, x=400, y=400) -> None:
         self.robot_radius = 25
-        self.x , self.y, self.theta = [400,400, 0]
+        self.x = x
+        self.y = y
+        self.theta = 0
         self.est_robot_pose = [0, 0, 0]
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
