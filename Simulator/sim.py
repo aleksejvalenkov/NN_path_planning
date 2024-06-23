@@ -96,17 +96,17 @@ dy = 100
 
 sensor_1_init_transform = np.array( 
         [[  1., 0., 500. + dx ],
-        [  0., 1., 20. + dy ],
+        [  0., 1., 100. + dy ],
         [  0., 0., 1. ]]
         )
 sensor_2_init_transform = np.array( 
-        [[  1., 0., 20. + dx ],
-        [  0., 1., 980. + dy ],
+        [[  1., 0., 100. + dx ],
+        [  0., 1., 900. + dy ],
         [  0., 0., 1. ]]
         )
 sensor_3_init_transform = np.array( 
-        [[  1., 0., 960. + dx ],
-        [  0., 1., 960. + dy ],
+        [[  1., 0., 910. + dx ],
+        [  0., 1., 910. + dy ],
         [  0., 0., 1. ]]
         )
 
@@ -227,63 +227,6 @@ def main():
                     particles_step.extend(particles_new)
 
 
-
-                # weight = copy.copy(measurements)
-                # S = np.sum(weight)
-
-                # N = len(particles)
-                
-                # for i in range(N):
-                #     measurements[i] = 1/measurements[i]
-
-                # for i in range(N):
-                #     weight[i] = weight[i]/S
-
-                
-                # index = random.randint(0, N-1)
-                # betta = 0
-                # N = 10
-                # for i in range(N):
-                #     betta = betta + random.uniform(0, 2*max(weight))
-                #     while betta > weight[index]:
-                #         betta = betta - weight[index]
-                #         index = (index + 1)%N # индекс изменяется в цикле от 0 до N
-
-                #     particles_new = gen_particles(len(particles)//N, 
-                #                                         particles[index].sensor_1_nr.transform, 
-                #                                         particles[index].sensor_2_nr.transform, 
-                #                                         particles[index].sensor_3_nr.transform,
-                #                                         std = measurements[index]//2,
-                #                                         x = particles[index].x, 
-                #                                         y = particles[index].y )
-                #     for robot in particles_new:
-                #         # robot.transform = particles[index].transform
-                #         # robot.x = particles[index].x
-                #         # robot.y = particles[index].y
-                #         robot.update()
-                    
-                #     particles_step.extend(particles_new)
-
-
-                # N = 10
-                # for i in range(N):
-                #     id = np.argmin(measurements)
-                #     particles_new = gen_particles(len(particles)//N, 
-                #                                         particles[id].sensor_1_nr.transform, 
-                #                                         particles[id].sensor_2_nr.transform, 
-                #                                         particles[id].sensor_3_nr.transform,
-                #                                         std = measurements[id]//1.5)
-                #     for robot in particles_new:
-                #         robot.transform = particles[id].transform
-                #         robot.x = particles[id].x
-                #         robot.y = particles[id].y
-                #         robot.update()
-
-                    # particles_step.extend(particles_new)
-                    # # particles_step.append(particles[id])
-                    # measurements[id] = 10000.
-
-
                 # print(len(particles_step))
                 particles = particles_step
                 # for robot in particles:
@@ -353,6 +296,11 @@ def main():
         screen.blit(text, [10,25])
         if recording:
             pg.draw.circle(screen, red, (WINDOW_SIZE[0]-20, 20), 10)
+            [600,400], [600,600], [400,600], [400,400]
+            pg.draw.aaline(screen, blue, [600,400], [600,600])
+            pg.draw.aaline(screen, blue, [600,600], [400,600])
+            pg.draw.aaline(screen, blue, [400,600], [400,400])
+            pg.draw.aaline(screen, blue, [400,400], [600,400])
         pg.display.update()
 
 

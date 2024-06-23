@@ -15,6 +15,7 @@ map_color_2 = (150,150,150)
 robot_color = (0,0,190)
 sensor_color = (0,190,0)
 sensor_color_2 = (10,10,10)
+sensor_color_3 = (255,110,0)
 silver = (194, 194, 194)
 way_color = (200, 50, 50)
 
@@ -30,8 +31,11 @@ class UWBSensor:
     def update(self):
         self.x , self.y, self.theta = get_XYTheta(self.transform)
 
-    def draw(self, screen):
-        pg.draw.circle(screen, sensor_color, (self.x , self.y), self.radius, 4)
+    def draw(self, screen, r = True):
+        if r:
+            pg.draw.circle(screen, sensor_color, (self.x , self.y), self.radius, 4)
+        else:
+            pg.draw.circle(screen, sensor_color_3, (self.x , self.y), self.radius, 4)
 
     def get_pose(self):
         return [self.x, self.y]
@@ -65,17 +69,17 @@ class Robot:
              )
         self.sensor_1_transform = np.array( 
             [[  1., 0., 500. ],
-             [  0., 1., 20. ],
+             [  0., 1., 100. ],
              [  0., 0., 1. ]]
              )
         self.sensor_2_transform = np.array( 
-            [[  1., 0., 20. ],
-             [  0., 1., 980. ],
+            [[  1., 0., 100. ],
+             [  0., 1., 900. ],
              [  0., 0., 1. ]]
              )
         self.sensor_3_transform = np.array( 
-            [[  1., 0., 960. ],
-             [  0., 1., 960. ],
+            [[  1., 0., 910. ],
+             [  0., 1., 910. ],
              [  0., 0., 1. ]]
              )
 
@@ -190,14 +194,17 @@ class Robot:
         self.sensor_3.draw(screen)
         self.robot_sensor_1.draw(screen)
         self.robot_sensor_2.draw(screen)
+        self.sensor_1_nr.draw(screen, r=False)
+        self.sensor_2_nr.draw(screen, r=False)
+        self.sensor_3_nr.draw(screen, r=False)
 
-        pg.draw.aaline(screen, sensor_color, self.robot_sensor_1.get_pose(), self.sensor_1.get_pose())
-        pg.draw.aaline(screen, sensor_color, self.robot_sensor_1.get_pose(), self.sensor_2.get_pose())
-        pg.draw.aaline(screen, sensor_color, self.robot_sensor_1.get_pose(), self.sensor_3.get_pose())
+        # pg.draw.aaline(screen, sensor_color, self.robot_sensor_1.get_pose(), self.sensor_1.get_pose())
+        # pg.draw.aaline(screen, sensor_color, self.robot_sensor_1.get_pose(), self.sensor_2.get_pose())
+        # pg.draw.aaline(screen, sensor_color, self.robot_sensor_1.get_pose(), self.sensor_3.get_pose())
 
-        pg.draw.aaline(screen, sensor_color, self.robot_sensor_2.get_pose(), self.sensor_1.get_pose())
-        pg.draw.aaline(screen, sensor_color, self.robot_sensor_2.get_pose(), self.sensor_2.get_pose())
-        pg.draw.aaline(screen, sensor_color, self.robot_sensor_2.get_pose(), self.sensor_3.get_pose())
+        # pg.draw.aaline(screen, sensor_color, self.robot_sensor_2.get_pose(), self.sensor_1.get_pose())
+        # pg.draw.aaline(screen, sensor_color, self.robot_sensor_2.get_pose(), self.sensor_2.get_pose())
+        # pg.draw.aaline(screen, sensor_color, self.robot_sensor_2.get_pose(), self.sensor_3.get_pose())
 
         pg.draw.circle(screen, (255,0,0), self.est_pose_sensor_1, 5, 5)
         pg.draw.circle(screen, (0,0,255), self.est_pose_sensor_2, 5, 5)
