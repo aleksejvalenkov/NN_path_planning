@@ -28,12 +28,13 @@ green = (0, 194, 0)
 blue =  (0, 0, 194)
 
 WINDOW_SIZE = (1000, 1000)
-DATAPATH = '/home/alex/Documents/datasets/VisualPlanerData/iter_2'
+DATAPATH = '/home/alex/Documents/datasets/VisualPlanerData/iter_0'
 
 index = get_max_index(DATAPATH) + 1
-
-df = pd.DataFrame(columns=['File Name', 'Label'])
-
+try:
+    df = pd.read_csv(DATAPATH + '/' + 'out.csv')
+except:
+    df = pd.DataFrame(columns=['File Name', 'Label'])
 
 pg.init()
 screen = pg.display.set_mode(WINDOW_SIZE,RESIZABLE, 32)
@@ -69,6 +70,11 @@ while True:
                 else:
                     print(f'Stop recording')
                     csv = df.to_csv(DATAPATH + '/' + 'out.csv', index=False)
+                    lpk = []
+                    for p, c in robot.robot_points:
+                        lpk.append(c)
+                    F = 1 - (sum(lpk) / len(lpk))
+                    print(f'F = {F}')
             if i.key == 13:
                 robot.auto_mode = not robot.auto_mode
 
@@ -78,9 +84,9 @@ while True:
     if keys[pg.K_s]:
         robot.teleop(teleop_vec=[-4,0,0])
     if keys[pg.K_a]:
-        robot.teleop(teleop_vec=[0,0,-0.2])
+        robot.teleop(teleop_vec=[0,0,-0.15])
     if keys[pg.K_d]:
-        robot.teleop(teleop_vec=[0,0,0.2])
+        robot.teleop(teleop_vec=[0,0,0.15])
 
 
 
@@ -96,18 +102,32 @@ while True:
             obs.extend(list(robot.depth_image))
             # obs.append(robot.action)
             data = np.array(obs)
-            print(data)
+            # print(data)
             print(f'Saved: {index}')
-            df.loc[len(df)] = [f'{index}.npy', robot.action]
-            np.save(DATAPATH + f'/{index}.npy', data)
+            # df.loc[len(df)] = [f'{index}.npy', robot.action]
+            # np.save(DATAPATH + f'/{index}.npy', data)
             index += 1
+
+        x = int(robot.get_pose()[0])
+        y = int(robot.get_pose()[1])
+        print(np.max(map.map_d))
+        if map.map_d[x][y] == 0:
+            robot.robot_points.append([robot.get_pose()[:2], 0])
+        else:
+            robot.robot_points.append([robot.get_pose()[:2], 1])
 
 # Update display
     screen.fill(silver)
 
-
     map.draw(screen)
     robot.draw(screen)
+
+    for p, c in robot.robot_points:
+        if c == 0:
+            pg.draw.circle(screen, blue, (p[0] , p[1]), 2)
+        else:
+            pg.draw.circle(screen, red, (p[0] , p[1]), 2)
+
     x,y,theta = robot.get_pose()
     text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
     screen.blit(text, [10,10])

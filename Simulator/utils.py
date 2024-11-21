@@ -33,16 +33,16 @@ class MnistModel(nn.Module):
         super().__init__()
         self.loss_fn = nn.CrossEntropyLoss()
 
-        self.conv0 = nn.Conv2d(1, 10, 3, stride=1, padding=1)
-        self.conv1 = nn.Conv2d(10, 20, 3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(20, 40, 3, stride=1, padding=1)
+        self.conv0 = nn.Conv2d(1, 20, 3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(20, 40, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(40, 80, 3, stride=1, padding=1)
 
         self.flat = nn.Flatten()
-        self.linear1 = nn.Linear(42, 40)
-        self.linear2 = nn.Linear(40, 30)
-        self.linear3 = nn.Linear(30, 20)
-        self.linear4 = nn.Linear(20, 10)
-        self.linear5 = nn.Linear(10, num_classes)
+        self.linear1 = nn.Linear(82, 150)
+        self.linear2 = nn.Linear(150, 100)
+        self.linear3 = nn.Linear(100, 50)
+        self.linear4 = nn.Linear(50, 25)
+        self.linear5 = nn.Linear(25, num_classes)
 
         self.act = nn.LeakyReLU(0.2)
         self.maxpool = nn.MaxPool2d(2,2)
@@ -103,6 +103,7 @@ class MnistModel(nn.Module):
     
     def epoch_end(self, epoch,result):
         print("Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(epoch, result['val_loss'], result['val_acc']))
+    
         
 
 class DepthSensor:
@@ -180,7 +181,7 @@ class Robot:
         self.t_vec = np.array([ self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
         self.path = None
-        self.way_point = (500//10, 500//10, 2)
+        self.way_point = (550//10, 550//10, 2)
         # print(f'Robot transform: \n {self.transform}')
         #Init Sensors
         self.camera_transform = np.array( 
@@ -197,6 +198,8 @@ class Robot:
 
         self.model = torch.load('/home/alex/Documents/NN_path_planning/nn/model/model_v2.pth')
 
+        self.robot_points = []
+
     def update(self, map):
         self.cell_size = round(1/map.scale)
 
@@ -206,8 +209,8 @@ class Robot:
         # print(f'Robot pose on map {(self.x//10, self.y//10)}')
         code = self.code_from_theta(self.theta)
         self.robot_pose_on_map = (int(self.x//10), int(self.y//10), code)
-        if map.resized_map[self.way_point[0]][self.way_point[1]] != 1:
-            self.path = solve(map.resized_map, self.robot_pose_on_map, self.way_point)
+        # if map.resized_map[self.way_point[0]][self.way_point[1]] != 1:
+        #     self.path = solve(map.resized_map, self.robot_pose_on_map, self.way_point)
 
         # print(self.path)
         # self.action, text = self.get_action_from_path(self.path, self.robot_pose_on_map)
@@ -216,10 +219,12 @@ class Robot:
         # print(self.get_waypoint_in_local())
 
         self.action = self.nn_brain(self.get_observation(self.get_waypoint_in_local(), self.depth_image))
-        print(f'Action: {self.action}')
+        # print(f'Action: {self.action}')
 
         if self.auto_mode:
             self.controll(self.action)
+        
+        # self.robot_points.append(self.get_pose()[:2])
 
     def get_observation(self, goal, depth_image):
         obs = list(goal)
@@ -245,9 +250,9 @@ class Robot:
         goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
         goal_as_tensor = torch.unsqueeze(goal_as_tensor, 0)
 
-        print(img_as_tensor.shape, goal_as_tensor.shape)
+        # print(img_as_tensor.shape, goal_as_tensor.shape)
         output = self.model.forward(img_as_tensor, goal_as_tensor)
-        print(output)
+        # print(output)
         action = F.softmax(output).detach().numpy().argmax()
         return action
 
@@ -307,6 +312,9 @@ class Robot:
         if self.path is not None:
             for cell in self.path:
                 pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
+        pass
+
+        
 
     def get_pose(self):
         return self.x , self.y, self.theta
@@ -467,8 +475,10 @@ class Robot:
 
 class Map:
     def __init__(self, size = (200, 200)) -> None:
+        self.obs_param = 200
         self.size = size
         self.map = np.zeros(self.size)
+        self.map_d = np.zeros(self.size)
         self.bool_map = np.zeros(self.size)
         self.scale = 0.1
         self.expansion_cells = 3
@@ -536,8 +546,8 @@ class Map:
 
             return extended_bool_map
 
-        np.random.seed(0)
-        noise = generate_perlin_noise_2d(self.size, (self.size[0] // 100, self.size[1] // 100))
+        np.random.seed(10)
+        noise = generate_perlin_noise_2d(self.size, (self.size[0] // self.obs_param, self.size[1] // self.obs_param))
         noise[noise < 0.5 ] = 0
         noise[noise >= 0.5 ] = 1
         # print(noise)
@@ -545,6 +555,7 @@ class Map:
         self.bool_map = noise
         self.resized_map = cv2.resize(self.bool_map, (int(self.size[0]*self.scale) , int(self.size[1]*self.scale)), interpolation = cv2.INTER_NEAREST)
         self.resized_map = extend_bool_map(self.resized_map)
+        self.map_d = copy.copy(cv2.resize(self.resized_map, self.size, interpolation = cv2.INTER_NEAREST))
         self.map = get_image_map(self.bool_map, self.resized_map)
    
 
