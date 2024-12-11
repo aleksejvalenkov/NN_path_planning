@@ -10,3 +10,4 @@ torch
 copy
 git+https://github.com/pvigier/perlin-numpy
 simple_pid
+thread6

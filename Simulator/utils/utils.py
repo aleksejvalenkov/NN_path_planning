@@ -1,10 +1,29 @@
-## Imports
+import pygame as pg
+import numpy as np
+from numpy import floor
+import sys
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+from utils.transforms import *
+from perlin_numpy import generate_perlin_noise_2d
+
+from planning.A_star import solve
+
+
 import torch
+from torch.utils.data.dataset import Dataset
+import torchvision.transforms as transforms
+from torch.utils.data import random_split
+from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import torch.nn as nn
 
 
-input_size = 42*42
+
+input_size = 42
 num_classes = 6
 
 class MnistModel(nn.Module):
@@ -12,16 +31,16 @@ class MnistModel(nn.Module):
         super().__init__()
         self.loss_fn = nn.CrossEntropyLoss()
 
-        self.conv0 = nn.Conv2d(1, 10, 3, stride=1, padding=1)
-        self.conv1 = nn.Conv2d(10, 20, 3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(20, 40, 3, stride=1, padding=1)
+        self.conv0 = nn.Conv2d(1, 20, 3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(20, 40, 3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(40, 80, 3, stride=1, padding=1)
 
         self.flat = nn.Flatten()
-        self.linear1 = nn.Linear(42, 40)
-        self.linear2 = nn.Linear(40, 30)
-        self.linear3 = nn.Linear(30, 20)
-        self.linear4 = nn.Linear(20, 10)
-        self.linear5 = nn.Linear(10, num_classes)
+        self.linear1 = nn.Linear(82, 150)
+        self.linear2 = nn.Linear(150, 100)
+        self.linear3 = nn.Linear(100, 50)
+        self.linear4 = nn.Linear(50, 25)
+        self.linear5 = nn.Linear(25, num_classes)
 
         self.act = nn.LeakyReLU(0.2)
         self.maxpool = nn.MaxPool2d(2,2)
@@ -82,3 +101,9 @@ class MnistModel(nn.Module):
     
     def epoch_end(self, epoch,result):
         print("Epoch [{}], val_loss: {:.4f}, val_acc: {:.4f}".format(epoch, result['val_loss'], result['val_acc']))
+    
+        
+
+
+
+

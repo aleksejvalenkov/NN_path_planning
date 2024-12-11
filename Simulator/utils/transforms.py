@@ -18,6 +18,11 @@ def get_XYTheta(transform):
 
     return x, y, theta
 
+def get_XY(transform):
+    x = transform[0,2]
+    y = transform[1,2]
+    return x, y
+
 def constrain(x, a, b):
     if x > 0.0 and x < abs(a):
         return a
