@@ -33,10 +33,10 @@ class Robot:
         self.length_px = self.length_m * 100 # In pixels
         self.width_px = self.width_m * 100 # In pixels
         self.x , self.y, self.theta = init_pos # robot's center coordinate
-        self.edge_points_init = [get_transform(np.array([-self.length_px/2, -self.width_px/2]), 0),
-                            get_transform(np.array([-self.length_px/2, +self.width_px/2]), 0),
-                            get_transform(np.array([+self.length_px/2, +self.width_px/2]), 0),
-                            get_transform(np.array([+self.length_px/2, -self.width_px/2]), 0)]
+        self.edge_points_init = [np.array([-self.length_px/2, -self.width_px/2, 1]),
+                                 np.array([-self.length_px/2, +self.width_px/2, 1]),
+                                 np.array([+self.length_px/2, +self.width_px/2, 1]),
+                                 np.array([+self.length_px/2, -self.width_px/2, 1])]
 
 
         self.edge_points = [[],[],[],[]]
@@ -48,9 +48,9 @@ class Robot:
         
         self.t_vec = np.array([self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
-        for j in range(456):
-            for i in range(len(self.edge_points)):
-                self.edge_points[i] = self.transform @ self.edge_points_init[i]
+
+        for i in range(len(self.edge_points)):
+            self.edge_points[i] = self.transform @ self.edge_points_init[i].T
         
         # print(self.edge_points)
 
@@ -60,12 +60,12 @@ class Robot:
         self.way_point = (550//10, 550//10, 2)
         # print(f'Robot transform: \n {self.transform}')
         #Init Sensors
-        self.camera_transform = np.array( 
+        self.lidar_transform = np.array( 
             [[  1., 0., self.robot_radius ],
              [  0., 1., 0. ],
              [  0., 0., 1. ]]
              )
-        self.depth_camera = Lidar2D(self.transform @ self.camera_transform)
+        self.lidar = Lidar2D(self.transform @ self.lidar_transform)
         self.depth_image = None
 
         self.auto_mode = False
@@ -78,6 +78,9 @@ class Robot:
 
     def update(self, map):
 
+        for i in range(len(self.edge_points)):
+            self.edge_points[i] = self.transform @ self.edge_points_init[i].T
+
         obstacles = map.get_obstacles()
         
         for obstacle in obstacles:
@@ -85,17 +88,13 @@ class Robot:
             if self.collision[0]:
                 break
 
-        
 
-        for i in range(len(self.edge_points)):
-            self.edge_points[i] = self.transform @ self.edge_points_init[i]
+        # self.cell_size = round(1/map.scale)
 
+        lidar_transform = self.transform @ self.lidar_transform
+        self.lidar.update(lidar_transform)
+        self.ladar_scan = self.lidar.scan(obstacles)
 
-        self.cell_size = round(1/map.scale)
-
-        self.depth_camera.transform = self.transform @ self.camera_transform
-        self.depth_camera.update()
-        # self.depth_image = self.depth_camera.scan(self.bool_map)
         # print(f'Robot pose on map {(self.x//10, self.y//10)}')
 
         self.robot_pose_on_map = (int(self.x//10), int(self.y//10))
@@ -118,8 +117,8 @@ class Robot:
     
     def get_edge_points(self):
         edge_points_coordinates = []
-        for i in range(len(self.edge_points)):
-            edge_points_coordinates.append(get_XY(self.edge_points[i]))
+        for point in self.edge_points:
+            edge_points_coordinates.append([point[0], point[1]])
         return edge_points_coordinates
     
     def nn_brain(self, obs):
@@ -184,20 +183,20 @@ class Robot:
         # pg.draw.circle(screen, robot_color, (self.x , self.y), self.robot_radius, 5)
         pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(self.theta) * self.robot_radius , self.y + np.sin(self.theta) * self.robot_radius])
         # Drowing robot borders
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[0]), get_XY(self.edge_points[1]))
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[1]), get_XY(self.edge_points[2]))
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[2]), get_XY(self.edge_points[3]))
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[3]), get_XY(self.edge_points[0]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[0][0], self.edge_points[0][1]), (self.edge_points[1][0], self.edge_points[1][1]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[1][0], self.edge_points[1][1]), (self.edge_points[2][0], self.edge_points[2][1]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[2][0], self.edge_points[2][1]), (self.edge_points[3][0], self.edge_points[3][1]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[3][0], self.edge_points[3][1]), (self.edge_points[0][0], self.edge_points[0][1]))
 
 
-        self.depth_camera.draw(screen)
+        self.lidar.draw(screen)
 
-        c = self.cell_size
-        # pg.draw.rect(screen, robot_color, (self.robot_pose_on_map[0]*c, self.robot_pose_on_map[1]*c, c, c))
-        # Draw path
-        if self.path is not None:
-            for cell in self.path:
-                pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
+        # c = self.cell_size
+        # # pg.draw.rect(screen, robot_color, (self.robot_pose_on_map[0]*c, self.robot_pose_on_map[1]*c, c, c))
+        # # Draw path
+        # if self.path is not None:
+        #     for cell in self.path:
+        #         pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
         if self.collision[0]:
             pg.draw.circle(screen, way_color, [self.collision[1] , self.collision[2]], 7, 3)
 

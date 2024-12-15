@@ -30,6 +30,27 @@ def find_collision(BB1, BB2):
 
     return collision, mean_point[0], mean_point[1]
 
+def find_collision_rays(BB1, BB2):
+
+    collision = False
+    points = []
+    
+    for line1 in BB1:
+        for point2_index in range(len(BB2)):
+
+            if point2_index == len(BB2)-1:
+                line2 = [BB2[point2_index], BB2[0]]
+            else:
+                line2 = [BB2[point2_index], BB2[point2_index+1]]
+            
+            intersection, x, y = lines_intersection(line1, line2)
+            if intersection:
+                collision = True
+                points.append([x, y])
+
+
+    return points
+
 
 def lines_intersection(line1, line2):
     intersection = False

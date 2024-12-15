@@ -38,7 +38,7 @@ red =   (194,0 , 0)
 green = (0, 194, 0)
 blue =  (0, 0, 194)
 
-WINDOW_SIZE = (1000, 1000)
+WINDOW_SIZE = (1800, 1000)
 DATAPATH = '/home/alex/Documents/datasets/VisualPlanerData/iter_0'
 
 index = get_max_index(DATAPATH) + 1
@@ -104,10 +104,17 @@ def pygame_window():
     map = Map(WINDOW_SIZE)
     map.generate()
     robot = Robot(map.bool_map)
+    #Cтены
+    obstacle_wall = Obstacle(init_pos=[1800//2,1000//2, 0], init_size=[1800,1000])
+    # obstacle_r = Obstacle(init_pos=[200,200, 0])
+    # obstacle_t = Obstacle(init_pos=[200,200, 0])
+    # obstacle_b = Obstacle(init_pos=[200,200, 0])
+
     obstacle_0 = Obstacle(init_pos=[200,200, 0])
     obstacle_1 = Obstacle(init_pos=[500,100, 1.57])
     obstacle_2 = Obstacle(init_pos=[100,500, 5])
     obstacle_3 = Obstacle(init_pos=[500,500, 0])
+    map.add_obstacle(obstacle_wall)
     map.add_obstacle(obstacle_0)
     map.add_obstacle(obstacle_1)
     map.add_obstacle(obstacle_2)

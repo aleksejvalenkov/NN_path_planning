@@ -12,17 +12,17 @@ from gui.palette import *
 
 
 class Obstacle:
-    def __init__(self, init_pos=[200,200, 1]) -> None:
+    def __init__(self, init_pos=[200,200, 1], init_size=[240, 30]) -> None:
 
-        self.length_m = 2.4 # In meter 
-        self.width_m = 0.3 # In meter
-        self.length_px = self.length_m * 100 # In pixels
-        self.width_px = self.width_m * 100 # In pixels
+        # self.length_m = init_size[0] # In meter 
+        # self.width_m = init_size[1] # In meter
+        self.length_px = init_size[0] # In pixels
+        self.width_px = init_size[1] # In pixels
         self.x , self.y, self.theta = init_pos # Obstacle's center coordinate
-        self.edge_points_init = [get_transform(np.array([-self.length_px/2, -self.width_px/2]), 0),
-                            get_transform(np.array([-self.length_px/2, +self.width_px/2]), 0),
-                            get_transform(np.array([+self.length_px/2, +self.width_px/2]), 0),
-                            get_transform(np.array([+self.length_px/2, -self.width_px/2]), 0)]
+        self.edge_points_init = [np.array([-self.length_px/2, -self.width_px/2, 1]),
+                                 np.array([-self.length_px/2, +self.width_px/2, 1]),
+                                 np.array([+self.length_px/2, +self.width_px/2, 1]),
+                                 np.array([+self.length_px/2, -self.width_px/2, 1])]
 
 
         self.edge_points = [[],[],[],[]]
@@ -34,18 +34,18 @@ class Obstacle:
         self.transform = get_transform(self.t_vec, self.theta)
         for j in range(456):
             for i in range(len(self.edge_points)):
-                self.edge_points[i] = self.transform @ self.edge_points_init[i]
+                self.edge_points[i] = self.transform @ self.edge_points_init[i].T
 
     def get_edge_points(self):
         edge_points_coordinates = []
-        for i in range(len(self.edge_points)):
-            edge_points_coordinates.append(get_XY(self.edge_points[i]))
+        for point in self.edge_points:
+            edge_points_coordinates.append([point[0], point[1]])
         return edge_points_coordinates
 
     def draw(self, screen):
 
         # Drowing robot borders
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[0]), get_XY(self.edge_points[1]))
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[1]), get_XY(self.edge_points[2]))
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[2]), get_XY(self.edge_points[3]))
-        pg.draw.aaline(screen, robot_color, get_XY(self.edge_points[3]), get_XY(self.edge_points[0]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[0][0], self.edge_points[0][1]), (self.edge_points[1][0], self.edge_points[1][1]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[1][0], self.edge_points[1][1]), (self.edge_points[2][0], self.edge_points[2][1]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[2][0], self.edge_points[2][1]), (self.edge_points[3][0], self.edge_points[3][1]))
+        pg.draw.aaline(screen, robot_color, (self.edge_points[3][0], self.edge_points[3][1]), (self.edge_points[0][0], self.edge_points[0][1]))
