@@ -16,6 +16,7 @@ from gui.palette import *
 from environment.collision import *
 
 
+
 import torch
 from torch.utils.data.dataset import Dataset
 import torchvision.transforms as transforms
@@ -26,10 +27,10 @@ import torch.nn as nn
 
 
 class Robot:
-    def __init__(self, bool_map, init_pos=[100,100, 1]) -> None:
+    def __init__(self, map, init_pos=[100,100, 1]) -> None:
 
-        self.length_m = 0.4 # In meter 
-        self.width_m = 0.25 # In meter
+        self.length_m = 0.6 # In meter 
+        self.width_m = 0.4 # In meter
         self.length_px = self.length_m * 100 # In pixels
         self.width_px = self.width_m * 100 # In pixels
         self.x , self.y, self.theta = init_pos # robot's center coordinate
@@ -41,16 +42,18 @@ class Robot:
 
         self.edge_points = [[],[],[],[]]
 
-        self.robot_radius = 25
+        self.robot_radius = 10
         self.throttle = 2
 
-        self.bool_map = bool_map
+        self.bool_map = map
         
         self.t_vec = np.array([self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
 
         for i in range(len(self.edge_points)):
-            self.edge_points[i] = self.transform @ self.edge_points_init[i].T
+            point = self.transform @ self.edge_points_init[i].T
+            self.edge_points[i] = [point[0], point[1]]
+            # self.edge_points[i] = self.transform @ self.edge_points_init[i].T
         
         # print(self.edge_points)
 
@@ -76,10 +79,19 @@ class Robot:
 
         self.robot_points = []
 
+
+    # def loop(self):
+
+    #     while True:
+
+
+
     def update(self, map):
 
         for i in range(len(self.edge_points)):
-            self.edge_points[i] = self.transform @ self.edge_points_init[i].T
+            # self.edge_points[i] = self.transform @ self.edge_points_init[i].T
+            point = self.transform @ self.edge_points_init[i].T
+            self.edge_points[i] = [point[0], point[1]]
 
         obstacles = map.get_obstacles()
         
@@ -93,7 +105,8 @@ class Robot:
 
         lidar_transform = self.transform @ self.lidar_transform
         self.lidar.update(lidar_transform)
-        self.ladar_scan = self.lidar.scan(obstacles)
+        # self.lidar_scan = []
+        self.lidar_scan = self.lidar.scan(obstacles)
 
         # print(f'Robot pose on map {(self.x//10, self.y//10)}')
 
@@ -116,10 +129,7 @@ class Robot:
         return obs
     
     def get_edge_points(self):
-        edge_points_coordinates = []
-        for point in self.edge_points:
-            edge_points_coordinates.append([point[0], point[1]])
-        return edge_points_coordinates
+        return self.edge_points
     
     def nn_brain(self, obs):
         img_as_img = obs
@@ -181,7 +191,7 @@ class Robot:
     def draw(self, screen):
 
         # pg.draw.circle(screen, robot_color, (self.x , self.y), self.robot_radius, 5)
-        pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(self.theta) * self.robot_radius , self.y + np.sin(self.theta) * self.robot_radius])
+        # pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(self.theta) * self.robot_radius , self.y + np.sin(self.theta) * self.robot_radius])
         # Drowing robot borders
         pg.draw.aaline(screen, robot_color, (self.edge_points[0][0], self.edge_points[0][1]), (self.edge_points[1][0], self.edge_points[1][1]))
         pg.draw.aaline(screen, robot_color, (self.edge_points[1][0], self.edge_points[1][1]), (self.edge_points[2][0], self.edge_points[2][1]))
