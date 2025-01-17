@@ -16,18 +16,8 @@ from gui.palette import *
 from environment.collision import *
 
 
-
-import torch
-from torch.utils.data.dataset import Dataset
-import torchvision.transforms as transforms
-from torch.utils.data import random_split
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
-import torch.nn as nn
-
-
 class Robot:
-    def __init__(self, map, init_pos=[100,100, 1]) -> None:
+    def __init__(self, map, init_pos) -> None:
 
         self.length_m = 0.6 # In meter 
         self.width_m = 0.4 # In meter
@@ -38,14 +28,18 @@ class Robot:
                                  np.array([-self.length_px/2, +self.width_px/2, 1]),
                                  np.array([+self.length_px/2, +self.width_px/2, 1]),
                                  np.array([+self.length_px/2, -self.width_px/2, 1])]
-
-
+        lin = 0.5
+        ang = 0.05
+        self.action_ves = {0:[0, 0], 1:[0,ang], 2:[lin,ang], 3:[lin,0], 4:[lin,-ang], 5:[0,-ang]}
         self.edge_points = [[],[],[],[]]
+        self.n_steps = 0
 
         self.robot_radius = 10
-        self.throttle = 2
+        self.throttle = 0
+        self.theta_speed = 0
+        self.target = init_pos
 
-        self.bool_map = map
+        self.map = map
         
         self.t_vec = np.array([self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
@@ -59,9 +53,6 @@ class Robot:
 
         self.collision = False, None, None
 
-        self.path = None
-        self.way_point = (550//10, 550//10, 2)
-        # print(f'Robot transform: \n {self.transform}')
         #Init Sensors
         self.lidar_transform = np.array( 
             [[  1., 0., self.robot_radius ],
@@ -69,21 +60,19 @@ class Robot:
              [  0., 0., 1. ]]
              )
         self.lidar = Lidar2D(self.transform @ self.lidar_transform)
-        self.depth_image = None
+        self.lidar_points = []
+        self.lidar_distances = []
 
         self.auto_mode = False
         self.pid_theta = PID(0.5, 0.0001, 0, 0)
         self.pid_theta.sample_time = 0.0033
 
-        self.model = torch.load('/home/alex/Documents/NN_path_planning/nn/model/model_v2.pth')
-
-        self.robot_points = []
-
-
-    # def loop(self):
-
-    #     while True:
-
+        self.state = np.zeros((16))
+        self.update(self.map)
+        self.get_state()
+        self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
+        self.Xt_l = np.min(self.state[0:10])
+        self.trajectory = [np.array(self.get_pose())[0:2]]
 
 
     def update(self, map):
@@ -105,22 +94,21 @@ class Robot:
 
         lidar_transform = self.transform @ self.lidar_transform
         self.lidar.update(lidar_transform)
-        # self.lidar_scan = []
-        self.lidar_scan = self.lidar.scan(obstacles)
 
-        # print(f'Robot pose on map {(self.x//10, self.y//10)}')
+        self.lidar_points, self.lidar_distances = self.lidar.scan(obstacles)
 
         self.robot_pose_on_map = (int(self.x//10), int(self.y//10))
 
         
         # print(self.get_waypoint_in_local())
 
-        # self.action = self.nn_brain(self.get_observation(self.get_waypoint_in_local(), self.depth_image))
-        # print(f'Action: {self.action}')
 
         if self.auto_mode:
             self.controll(self.action)
         
+    def set_target(self, target):
+        self.target = target
+        self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
 
     def get_observation(self, goal, depth_image):
         obs = list(goal)
@@ -130,35 +118,81 @@ class Robot:
     
     def get_edge_points(self):
         return self.edge_points
+
+    def get_state(self):
+        state = np.zeros((16))
+        # 10 mins ranges in 30 rays of lidar [10]
+        lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
+        lidar_distances_mins = np.zeros((10))
+        c = len(lidar_distances_norm) // len(lidar_distances_mins)
+        for i in range(len(lidar_distances_mins)):
+            lidar_distances_mins[i] = np.min(lidar_distances_norm[i*c:i*c+c])
+        
+        # Velocity lin, angular [2]
+        velocity = np.array([np.exp(self.throttle), np.tanh(self.theta_speed)])
+        # Target point vector [2]
+        target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1])
+        target_point_vector = np.array([target_point_loc[0], target_point_loc[1]])
+        # robot orientation [1]
+        robot_orientation = np.tanh(self.theta)
+        # target orientation [1]
+        target_orientation = np.tanh(self.target[2])
+
+        state[0:10] = lidar_distances_mins
+        state[10:12] = velocity
+        state[12:14] = target_point_vector
+        # print('target_point_vector ', target_point_vector)
+        state[14] = robot_orientation
+        state[15] = target_orientation
+        # print(state.shape)
+        # print(state)
+        self.state = state
+        return np.array(state)
     
-    def nn_brain(self, obs):
-        img_as_img = obs
-        goal_np = img_as_img[:2]
-        # goal_np = np.array([0.,0.])
-        goal_np /= 1000.0
-        img_as_img = img_as_img[2:]
-        img_as_img /= 10000.0
-        img_as_tensor = torch.from_numpy(img_as_img.astype('float32'))
-        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
-        img_as_tensor = torch.cat(tuple([img_as_tensor for item in range(len(img_as_img))]), 0)
-        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
-        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+    def get_reward(self):
+        reward = 0
+        terminated = False
+        truncated = False
+        max_revard = 1000
+        Cd = 30
+        Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
+        Co = 30/self.lidar.ray_lenght
+        Cop = 100/self.lidar.ray_lenght
+        Xt = np.min(self.state[0:10])
+        max_steps = 1000
+        # print('Xt= ', Xt)
+        hd = self.state[15] - self.state[14]
+        Cr = 10
+        Cp = 0.0
+        Cro = 5 * self.lidar.ray_lenght
+        # print(self.Dt_l, Dt)
+        if Dt < Cd :
+            reward = max_revard
+            truncated = True
+        elif Xt < Co:
+            reward = -100
+            terminated = True
+        elif self.n_steps > max_steps:
+            reward = -100
+            terminated = True
+        # elif Xt < Cop:
+        #     reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd) - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
+        else:
+            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd)
+        # if reward < 0:
+        #     reward = 0
+        self.Dt_l = Dt
+        self.Xt_l = Xt
+        # print(reward)
+        return reward, terminated, truncated
 
-        goal_as_tensor = torch.from_numpy(goal_np.astype('float32'))
-        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
-        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
-        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 0)
-
-        # print(img_as_tensor.shape, goal_as_tensor.shape)
-        output = self.model.forward(img_as_tensor, goal_as_tensor)
-        # print(output)
-        action = F.softmax(output).detach().numpy().argmax()
-        return action
 
     def controll(self, action):
-
-            # self.teleop(teleop_vec=[self.throttle,0,self.theta_speed])
-            pass
+        # print(action)
+        self.throttle, self.theta_speed = self.action_ves.get(action)
+        self.teleop(teleop_vec=[self.throttle,0,self.theta_speed])
+        self.n_steps += 1
+        
 
     def teleop(self, teleop_vec):
         scale = 4
@@ -187,6 +221,7 @@ class Robot:
         
         # print(get_XYTheta(self.transform))
         self.x , self.y, self.theta = get_XYTheta(self.transform)
+        self.trajectory.append(np.array(self.get_pose())[0:2])
 
     def draw(self, screen):
 
@@ -207,8 +242,17 @@ class Robot:
         # if self.path is not None:
         #     for cell in self.path:
         #         pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
+
+        # draw trajectory
+        for i in range(1,len(self.trajectory)):
+            self.trajectory[i]
+            pg.draw.aaline(screen, robot_color, self.trajectory[i-1], self.trajectory[i])
+
+
         if self.collision[0]:
             pg.draw.circle(screen, way_color, [self.collision[1] , self.collision[2]], 7, 3)
+
+        pg.draw.circle(screen, way_color, [self.target[0] , self.target[1]], 7, 3)
 
         
 

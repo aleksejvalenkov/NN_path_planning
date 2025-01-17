@@ -21,12 +21,47 @@ class Map:
         self.size = size
         self.map = np.zeros(self.size)
         self.map_d = np.zeros(self.size)
-        self.bool_map = np.zeros(self.size)
         self.scale = 0.1
         self.expansion_cells = 3
-        self.resized_map = cv2.resize(self.bool_map, (int(self.size[0]*self.scale) , int(self.size[1]*self.scale)), interpolation = cv2.INTER_NEAREST)
         self.obstacles = []
-        pass
+        # Cтены 
+        # Нужен генератор карт
+        obstacle_l = Obstacle(init_pos=[30//2, 1000//2, 0.001], init_size=[30, 1000])
+        obstacle_r = Obstacle(init_pos=[1800-30//2, 1000//2, 0.001], init_size=[30, 1000])
+        obstacle_t = Obstacle(init_pos=[1800//2, 30//2, 0.001], init_size=[1800, 30])
+        obstacle_b = Obstacle(init_pos=[1800//2, 1000-30//2, 0.001], init_size=[1800, 30])
+
+        obstacle_0 = Obstacle(init_pos=[200, 330//2+30, 0.001], init_size=[30, 330])
+        obstacle_1 = Obstacle(init_pos=[200+800//2, 330+30//2, 0.001], init_size=[800, 30])
+        obstacle_2 = Obstacle(init_pos=[400//2, 530+30//2, 0.001], init_size=[400, 30])
+        obstacle_3 = Obstacle(init_pos=[400+150+500//2, 530+30//2, 0.001], init_size=[500, 30])
+        obstacle_4 = Obstacle(init_pos=[400+150+700, 750+30//2, -2.3], init_size=[600, 30])
+        obstacle_5 = Obstacle(init_pos=[1000-30//2, 230//2+30, 0.001], init_size=[30, 230])
+        # obstacle_6 = Obstacle(init_pos=[100, 500, 5])
+        # obstacle_7 = Obstacle(init_pos=[500, 500, 0.001])
+        # obstacle_8 = Obstacle(init_pos=[200, 200, 0.001])
+        # obstacle_9 = Obstacle(init_pos=[500, 100, 1.571])
+        # obstacle_10 = Obstacle(init_pos=[100, 500, 5])
+        # obstacle_11 = Obstacle(init_pos=[500, 500, 0.001])
+
+        self.add_obstacle(obstacle_l)
+        self.add_obstacle(obstacle_r)
+        self.add_obstacle(obstacle_t)
+        self.add_obstacle(obstacle_b)
+
+        self.add_obstacle(obstacle_0)
+        self.add_obstacle(obstacle_1)
+        self.add_obstacle(obstacle_2)
+        self.add_obstacle(obstacle_3)
+        self.add_obstacle(obstacle_4)
+        self.add_obstacle(obstacle_5)
+
+        # map.add_obstacle(obstacle_6)
+        # map.add_obstacle(obstacle_7)
+        # map.add_obstacle(obstacle_8)
+        # map.add_obstacle(obstacle_9)
+        # map.add_obstacle(obstacle_10)
+        # map.add_obstacle(obstacle_11)
 
     def add_obstacle(self, obstacle):
         self.obstacles.append(obstacle)
@@ -35,29 +70,8 @@ class Map:
         return self.obstacles
 
     def generate(self):
-        def get_bool_map(map):
-            bool_map = [ [False for j in range(len(map[0]))] for i in range(len(map))]
-            for i in range(len(map)):
-                for j in range(len(map[0])):
-                    if map[i][j] >= 0.5:
-                        bool_map[i][j] = 1
-                    else:
-                        bool_map[i][j] = 0
-            return bool_map
-        
-        
-        def extend_bool_map(bool_map):
-            def get_cels_in_radius(v, map):
-                x1, y1 = v
-                rows, cols = map.shape
-                check_next_node = lambda x, y: True if 0 <= y < cols and 0 <= x < rows and not bool(map[x][y]) else False
-                ways = [-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [1, 1], [-1, 1]
-                return [(x1 + dx, y1 + dy) for dx, dy in ways if check_next_node(x1 + dx, y1 + dy)]
-                
-            extended_bool_map = copy.copy(bool_map)
+        pass
 
-
-            return extended_bool_map
    
 
     def update(self):

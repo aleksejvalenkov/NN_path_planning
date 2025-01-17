@@ -73,7 +73,7 @@ def lines_intersection(line1, line2):
     A = np.array([[a1, b1],[a2, b2]])
     B = np.array([[c1],[c2]])
     deter = a1 * b2 + b1 * a2
-    if deter != 0.0:
+    if det(A) != 0.0:
         X = np.dot(inv(A) , B).T
     else:
         print("paralel lines")

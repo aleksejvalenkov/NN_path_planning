@@ -56,6 +56,30 @@ class MnistModel(nn.Module):
         out = self.linear5(out)
         return(out)
     
+    def nn_brain(self, obs):
+        img_as_img = obs
+        goal_np = img_as_img[:2]
+        # goal_np = np.array([0.,0.])
+        goal_np /= 1000.0
+        img_as_img = img_as_img[2:]
+        img_as_img /= 10000.0
+        img_as_tensor = torch.from_numpy(img_as_img.astype('float32'))
+        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+        img_as_tensor = torch.cat(tuple([img_as_tensor for item in range(len(img_as_img))]), 0)
+        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+        img_as_tensor = torch.unsqueeze(img_as_tensor, 0)
+
+        goal_as_tensor = torch.from_numpy(goal_np.astype('float32'))
+        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
+        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 1)
+        goal_as_tensor = torch.unsqueeze(goal_as_tensor, 0)
+
+        # print(img_as_tensor.shape, goal_as_tensor.shape)
+        output = self.model.forward(img_as_tensor, goal_as_tensor)
+        # print(output)
+        action = F.softmax(output).detach().numpy().argmax()
+        return action
+
     def training_step(self, batch):
         images, goals, labels = batch
         out = self(images, goals) ## Generate predictions

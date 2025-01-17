@@ -5,6 +5,7 @@ import sys
 import os
 import pandas as pd
 import threading
+from random import randint, random
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -23,79 +24,90 @@ def create_folder(workspace:str, folder:str) -> None:
         print(f"create folder with path {0}".format(path))
     return path
 
+class Action:
+    def __init__(self):
+        self.n = 6
+
+    def sample(self):
+        return randint(0,5)
+
 class Simulator:
     def __init__(self):
         
         self.FPS = 30
 
         self.WINDOW_SIZE = (1800, 1000)
+        self.target = [self.WINDOW_SIZE[0]//2, self.WINDOW_SIZE[1]//2, 0.0]
 
         # init objects
-        self.map = Map(self.WINDOW_SIZE)
-        self.map.generate()
+        # self.map = Map(self.WINDOW_SIZE)
+        # self.robot = Robot(self.map, init_pos=[100,100, 1])
+        # self.robot.target = self.target
 
-        self.robots = []
-        NUM_ROBOTS = 1
-        for i in range(NUM_ROBOTS):
-            robot = Robot(self.map.bool_map)
-            self.robots.append(robot)
 
-        # robot = Robot(map.bool_map)
-        #Cтены
-        obstacle_l = Obstacle(init_pos=[30//2, 1000//2, 0.001], init_size=[30, 1000])
-        obstacle_r = Obstacle(init_pos=[1800-30//2, 1000//2, 0.001], init_size=[30, 1000])
-        obstacle_t = Obstacle(init_pos=[1800//2, 30//2, 0.001], init_size=[1800, 30])
-        obstacle_b = Obstacle(init_pos=[1800//2, 1000-30//2, 0.001], init_size=[1800, 30])
 
-        obstacle_0 = Obstacle(init_pos=[200, 330//2+30, 0.001], init_size=[30, 330])
-        obstacle_1 = Obstacle(init_pos=[200+800//2, 330+30//2, 0.001], init_size=[800, 30])
-        obstacle_2 = Obstacle(init_pos=[400//2, 530+30//2, 0.001], init_size=[400, 30])
-        obstacle_3 = Obstacle(init_pos=[400+150+500//2, 530+30//2, 0.001], init_size=[500, 30])
-        obstacle_4 = Obstacle(init_pos=[400+150+700, 750+30//2, -2.3], init_size=[600, 30])
-        obstacle_5 = Obstacle(init_pos=[1000-30//2, 230//2+30, 0.001], init_size=[30, 230])
-        # obstacle_6 = Obstacle(init_pos=[100, 500, 5])
-        # obstacle_7 = Obstacle(init_pos=[500, 500, 0.001])
-        # obstacle_8 = Obstacle(init_pos=[200, 200, 0.001])
-        # obstacle_9 = Obstacle(init_pos=[500, 100, 1.571])
-        # obstacle_10 = Obstacle(init_pos=[100, 500, 5])
-        # obstacle_11 = Obstacle(init_pos=[500, 500, 0.001])
+        # pg.init()
+        # self.screen = pg.display.set_mode(self.WINDOW_SIZE,RESIZABLE, 32)
+        # self.clock = pg.time.Clock()
+        # self.font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
 
-        self.map.add_obstacle(obstacle_l)
-        self.map.add_obstacle(obstacle_r)
-        self.map.add_obstacle(obstacle_t)
-        self.map.add_obstacle(obstacle_b)
+        # Learning parametrs
+        self.observation_space = np.zeros((16))
+        self.observation = []
 
-        self.map.add_obstacle(obstacle_0)
-        self.map.add_obstacle(obstacle_1)
-        self.map.add_obstacle(obstacle_2)
-        self.map.add_obstacle(obstacle_3)
-        self.map.add_obstacle(obstacle_4)
-        self.map.add_obstacle(obstacle_5)
-        # map.add_obstacle(obstacle_6)
-        # map.add_obstacle(obstacle_7)
-        # map.add_obstacle(obstacle_8)
-        # map.add_obstacle(obstacle_9)
-        # map.add_obstacle(obstacle_10)
-        # map.add_obstacle(obstacle_11)
+        self.action_space = Action()
+        self.action = self.action_space.sample()
 
+        self.reward_range = (-np.inf, np.inf)
+
+        self.old_robots = []
+        self.reset()
+        
+
+    def init_window(self):
         pg.init()
         self.screen = pg.display.set_mode(self.WINDOW_SIZE,RESIZABLE, 32)
         self.clock = pg.time.Clock()
         self.font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
 
 
+    def kill_window(self):
+        pg.quit()
+        # sys.exit()
+
+
+    
+    def reset(self):
+        # init objects
+        self.map = Map(self.WINDOW_SIZE)
+        # init_pos = [randint(100,1700), randint(100,900), (random()-0.5)*2*np.pi]
+        init_pos = [1600, 800, (random()-0.5)*2*np.pi]
+        self.robot = Robot(self.map, init_pos=init_pos)
+        self.robot.set_target(self.target)
+        self.old_robots.append(self.robot)
+        # self.pygame_iter() # Обновляем состояние среды
+        state = self.robot.get_state()
+        info = {}
+        return state, info
+
+    def step(self, action):
+        self.robot.controll(action) # Перемещаем робота на одно действие
+        self.pygame_iter() # Обновляем состояние среды
+        next_state = self.robot.get_state()
+        # print(next_state)
+        reward, terminated, truncated = self.robot.get_reward()
+        info = {}
+        return next_state, reward, terminated, truncated, info
+
     def iteration(self):
         # thread_pygame = threading.Thread(target=self.pygame_window, args=())
         # thread_tkinter = threading.Thread(target=self.tkinter_window, args=())
-
-
         # thread_pygame.start()
         # # thread_tkinter.start()
-        # self.pygame_window()
-        self.pygame_window()
+        self.pygame_iter()
 
     def get_robot_data(self):
-        return self.robots[0].get_pose()
+        return self.robot.get_pose()
 
 
     def tkinter_window(self):
@@ -142,11 +154,11 @@ class Simulator:
         # Execute Tkinter
         root.mainloop()
 
-    def pygame_window(self):
+    def pygame_iter(self):
 
         
         if True:
-            self.clock.tick(self.FPS)
+            # self.clock.tick(self.FPS)
         # Check events
             for i in pg.event.get():
                 if i.type == QUIT:
@@ -160,57 +172,43 @@ class Simulator:
                     if i.key == 32:
                         pass
                     if i.key == 13:
-                        robot[0].auto_mode = not robot[0].auto_mode
+                        self.robot.auto_mode = not self.robot.auto_mode
 
             keys = pg.key.get_pressed()
             if keys[pg.K_w]:
-                self.robots[0].teleop(teleop_vec=[1,0,0])
+                self.robot.teleop(teleop_vec=[1,0,0])
             if keys[pg.K_s]:
-                self.robots[0].teleop(teleop_vec=[-1,0,0])
+                self.robot.teleop(teleop_vec=[-1,0,0])
             if keys[pg.K_a]:
-                self.robots[0].teleop(teleop_vec=[0,-1,0])
+                self.robot.teleop(teleop_vec=[0,-1,0])
             if keys[pg.K_d]:
-                self.robots[0].teleop(teleop_vec=[0,1,0])
+                self.robot.teleop(teleop_vec=[0,1,0])
             if keys[pg.K_q]:
-                self.robots[0].teleop(teleop_vec=[0,0,-0.15])
+                self.robot.teleop(teleop_vec=[0,0,-0.15])
             if keys[pg.K_e]:
-                self.robots[0].teleop(teleop_vec=[0,0,0.15])
+                self.robot.teleop(teleop_vec=[0,0,0.15])
 
 
 
         # Render scene
             self.map.update()
-            for robot in self.robots:
-                robot.update(self.map)
-
-            #     x = int(robot.get_pose()[0])
-            #     y = int(robot.get_pose()[1])
-            #     print(np.max(map.map_d))
-            #     if map.map_d[x][y] == 0:
-            #         robot.robot_points.append([robot.get_pose()[:2], 0])
-            #     else:
-            #         robot.robot_points.append([robot.get_pose()[:2], 1])
+            self.robot.update(self.map)
 
         # Update display
             self.screen.fill(silver)
 
-            # map.draw(screen)
-            for robot in self.robots:
-                robot.draw(self.screen)
-            # robot.draw(screen)
+            self.robot.draw(self.screen)
             self.map.draw(self.screen)
+            if len(self.old_robots) > 15:
+                for i in range(len(self.old_robots)-15,len(self.old_robots)):
+                    self.old_robots[i].draw(self.screen)
 
-
-            x,y,theta = self.robots[0].get_pose()
+            x,y,theta = self.robot.get_pose()
             text = self.font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
             self.screen.blit(text, [10,10])
-            text = self.font.render(f'Robot coordinates on map: x = {self.robots[0].robot_pose_on_map[0]}, y = {self.robots[0].robot_pose_on_map[1]}' , True, black)
+            text = self.font.render(f'Steps: x = {self.robot.n_steps}' , True, black)
             self.screen.blit(text, [10,25])
 
             pg.display.update()
 
 
-sim = Simulator()
-while True:
-    sim.iteration()
-    print(sim.get_robot_data())
