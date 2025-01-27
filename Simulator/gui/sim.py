@@ -6,7 +6,9 @@ import os
 import pandas as pd
 import threading
 from random import randint, random
+import time
 
+SIM_TIME = True
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
@@ -34,7 +36,7 @@ class Action:
 class Simulator:
     def __init__(self):
         
-        self.FPS = 30
+        self.FPS = 1000
 
         self.WINDOW_SIZE = (1800, 1000)
         self.target = [self.WINDOW_SIZE[0]//2, self.WINDOW_SIZE[1]//2, 0.0]
@@ -60,15 +62,20 @@ class Simulator:
 
         self.reward_range = (-np.inf, np.inf)
 
+        self.n_robots = 10
+        self.robots = []
+
         self.old_robots = []
         self.reset()
+        # self.t_old = time.time()
+        # fps = time.time() - self.t_old
         
 
     def init_window(self):
         pg.init()
         self.screen = pg.display.set_mode(self.WINDOW_SIZE,RESIZABLE, 32)
         self.clock = pg.time.Clock()
-        self.font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
+        self.font = pg.font.SysFont("Ubuntu Condensed", 20, bold=False, italic=False)
 
 
     def kill_window(self):
@@ -83,6 +90,10 @@ class Simulator:
         # init_pos = [randint(100,1700), randint(100,900), (random()-0.5)*2*np.pi]
         init_pos = [1600, 800, (random()-0.5)*2*np.pi]
         self.robot = Robot(self.map, init_pos=init_pos)
+        self.robots = []
+        for i in range(self.n_robots):
+            self.robots.append(Robot(self.map, init_pos=[100 + 100*i, 500, 0]))
+
         self.robot.set_target(self.target)
         self.old_robots.append(self.robot)
         # self.pygame_iter() # Обновляем состояние среды
@@ -92,6 +103,7 @@ class Simulator:
 
     def step(self, action):
         self.robot.controll(action) # Перемещаем робота на одно действие
+
         self.pygame_iter() # Обновляем состояние среды
         next_state = self.robot.get_state()
         # print(next_state)
@@ -158,7 +170,8 @@ class Simulator:
 
         
         if True:
-            # self.clock.tick(self.FPS)
+            if SIM_TIME:
+                self.clock.tick(self.FPS)
         # Check events
             for i in pg.event.get():
                 if i.type == QUIT:
@@ -176,28 +189,32 @@ class Simulator:
 
             keys = pg.key.get_pressed()
             if keys[pg.K_w]:
-                self.robot.teleop(teleop_vec=[1,0,0])
+                self.robot.controll([1, 0, 0], False)
             if keys[pg.K_s]:
-                self.robot.teleop(teleop_vec=[-1,0,0])
+                self.robot.controll([-1, 0, 0], False)
             if keys[pg.K_a]:
-                self.robot.teleop(teleop_vec=[0,-1,0])
+                self.robot.controll([0, -1, 0], False)
             if keys[pg.K_d]:
-                self.robot.teleop(teleop_vec=[0,1,0])
+                self.robot.controll([0, 1, 0], False)
             if keys[pg.K_q]:
-                self.robot.teleop(teleop_vec=[0,0,-0.15])
+                self.robot.controll([0.5, 0, -0.15], False)
             if keys[pg.K_e]:
-                self.robot.teleop(teleop_vec=[0,0,0.15])
+                self.robot.controll([0.5, 0, 0.15], False)
 
 
 
         # Render scene
             self.map.update()
-            self.robot.update(self.map)
+            # self.robot.update(self.map)
+            for robot in self.robots:
+                robot.update(self.map)
 
         # Update display
             self.screen.fill(silver)
 
-            self.robot.draw(self.screen)
+            # self.robot.draw(self.screen)
+            for robot in self.robots:
+                robot.draw(self.screen)
             self.map.draw(self.screen)
             if len(self.old_robots) > 15:
                 for i in range(len(self.old_robots)-15,len(self.old_robots)):
@@ -205,9 +222,13 @@ class Simulator:
 
             x,y,theta = self.robot.get_pose()
             text = self.font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
-            self.screen.blit(text, [10,10])
-            text = self.font.render(f'Steps: x = {self.robot.n_steps}' , True, black)
-            self.screen.blit(text, [10,25])
+            self.screen.blit(text, [30,10])
+            text = self.font.render(f'Steps: {self.robot.n_steps}' , True, black)
+            self.screen.blit(text, [30,35])
+            text = self.font.render(f'FPS: {self.clock.get_fps()}' , True, black)
+            # text = self.font.render(f'FPS: {150.710801124572754}' , True, black)
+            self.screen.blit(text, [30,65])
+            print(self.clock.get_fps())
 
             pg.display.update()
 

@@ -19,10 +19,18 @@ from environment.collision import *
 class Robot:
     def __init__(self, map, init_pos) -> None:
 
-        self.length_m = 0.6 # In meter 
-        self.width_m = 0.4 # In meter
+        self.length_m = 0.51 # In meter 
+        self.width_m = 0.32 # In meter
+        self.length_wheel = 0.51
+        self.width_wheel = 0.32
+        self.wheel_radius = 0.1
         self.length_px = self.length_m * 100 # In pixels
         self.width_px = self.width_m * 100 # In pixels
+        self.wheel_eps = 0.9
+        self.max_wheel_vel = 10
+        self.joit_vec_ust = np.zeros((4))
+        self.joit_ang_vel = np.zeros((4))
+
         self.x , self.y, self.theta = init_pos # robot's center coordinate
         self.edge_points_init = [np.array([-self.length_px/2, -self.width_px/2, 1]),
                                  np.array([-self.length_px/2, +self.width_px/2, 1]),
@@ -30,13 +38,14 @@ class Robot:
                                  np.array([+self.length_px/2, -self.width_px/2, 1])]
         lin = 0.5
         ang = 0.05
-        self.action_ves = {0:[0, 0], 1:[0,ang], 2:[lin,ang], 3:[lin,0], 4:[lin,-ang], 5:[0,-ang]}
+        self.action_ves = {0:[0, 0, 0], 1:[0, 0,ang], 2:[lin, 0,ang], 3:[lin, 0,0], 4:[lin, 0,-ang], 5:[0, 0,-ang]}
         self.edge_points = [[],[],[],[]]
         self.n_steps = 0
 
         self.robot_radius = 10
-        self.throttle = 0
-        self.theta_speed = 0
+        self.Vx = 0
+        self.Vy = 0
+        self.W = 0
         self.target = init_pos
 
         self.map = map
@@ -67,15 +76,23 @@ class Robot:
         self.pid_theta = PID(0.5, 0.0001, 0, 0)
         self.pid_theta.sample_time = 0.0033
 
+        self.trajectory = [np.array(self.get_pose())[0:2]]
+
         self.state = np.zeros((16))
         self.update(self.map)
         self.get_state()
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         self.Xt_l = np.min(self.state[0:10])
-        self.trajectory = [np.array(self.get_pose())[0:2]]
+        
 
 
     def update(self, map):
+
+        self.integrate_ang_vel(self.joit_vec_ust)
+        move_vec_real = self.joit_vec_to_move_vec(self.joit_ang_vel)
+        # print('move_vec_real =', move_vec_real)
+        self.teleop(teleop_vec=move_vec_real)
+        self.n_steps += 1
 
         for i in range(len(self.edge_points)):
             # self.edge_points[i] = self.transform @ self.edge_points_init[i].T
@@ -129,7 +146,7 @@ class Robot:
             lidar_distances_mins[i] = np.min(lidar_distances_norm[i*c:i*c+c])
         
         # Velocity lin, angular [2]
-        velocity = np.array([np.exp(self.throttle), np.tanh(self.theta_speed)])
+        velocity = np.array([np.exp(self.Vx), np.tanh(self.W)])
         # Target point vector [2]
         target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1])
         target_point_vector = np.array([target_point_loc[0], target_point_loc[1]])
@@ -179,19 +196,73 @@ class Robot:
         #     reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd) - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
         else:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd)
-        # if reward < 0:
-        #     reward = 0
+
         self.Dt_l = Dt
         self.Xt_l = Xt
         # print(reward)
         return reward, terminated, truncated
 
 
-    def controll(self, action):
-        # print(action)
-        self.throttle, self.theta_speed = self.action_ves.get(action)
-        self.teleop(teleop_vec=[self.throttle,0,self.theta_speed])
-        self.n_steps += 1
+    def controll(self, action, from_action_dict=True):
+        if from_action_dict:
+            move_vec = self.action_ves.get(action)
+        else:
+            move_vec = action
+        self.joit_vec_ust = self.move_vec_to_joit_vec(move_vec)
+        # print('joit_vec_ust =', self.joit_vec_ust)
+        
+    
+    def integrate_ang_vel(self, joit_vec_ust):
+
+        err = joit_vec_ust - self.joit_ang_vel 
+        filter = np.zeros((4))
+        for i in range(len(filter)):
+            if err[i] > 0.001:
+                filter[i] = 1
+            elif err[i] < -0.001:
+                filter[i] = -1
+            else:
+                filter[i] = 0.0
+
+
+        # print('filter =', filter)
+        wheel_eps_vec = np.array([self.wheel_eps, self.wheel_eps, self.wheel_eps, self.wheel_eps])
+        self.joit_ang_vel += (filter * wheel_eps_vec)
+
+
+    def move_vec_to_joit_vec(self, move_vec):
+        move_vec_np = np.array(move_vec)
+        l = self.length_wheel
+        w = self.width_wheel
+        H = np.array([[1, -1, -(l + w)],
+                      [1,  1,  (l + w)],
+                      [1,  1, -(l + w)],
+                      [1, -1,  (l + w)]])
+        joit_vec = 1/self.wheel_radius * (H @ move_vec_np.T)
+
+        for i in range(len(joit_vec)):
+            if joit_vec[i] > self.max_wheel_vel:
+                joit_vec[i] = self.max_wheel_vel
+            elif joit_vec[i] < -self.max_wheel_vel:
+                joit_vec[i] = -self.max_wheel_vel
+
+
+        return joit_vec
+    
+    
+    def joit_vec_to_move_vec(self, joit_vec):
+        joit_vec_np = np.array(joit_vec)
+        l = self.length_wheel
+        w = self.width_wheel
+        
+        self.Vx = self.wheel_radius/4 * np.sum(np.array([1, 1, 1, 1]) *  joit_vec_np)
+        self.Vy = self.wheel_radius/4 * np.sum(np.array([-1, 1, 1, -1]) *  joit_vec_np)
+        self.W = (self.wheel_radius/(4 * (l + w))) * np.sum(np.array([-1, 1, -1, 1]) *  joit_vec_np)
+        
+        move_vec = np.array([self.Vx, self.Vy, self.W])
+
+        return move_vec
+
         
 
     def teleop(self, teleop_vec):
@@ -213,7 +284,6 @@ class Robot:
                 move_vector = self.t_vec - pushing_away_vector
         
             
-
         # print(move_vector)
 
         teleop_transform =  get_transform(move_vector * scale, teleop_vec[2])
