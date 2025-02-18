@@ -42,6 +42,9 @@ class Obstacle:
         #     edge_points_coordinates.append([point[0], point[1]])
         # return edge_points_coordinates
         return self.edge_points
+    
+    def get_lines(self):
+        return [self.edge_points[0], self.edge_points[1]], [self.edge_points[1], self.edge_points[2]], [self.edge_points[2], self.edge_points[3]], [self.edge_points[3], self.edge_points[0]]
 
     def draw(self, screen):
 

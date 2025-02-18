@@ -15,9 +15,9 @@ from environment.collision import *
 
 class Lidar2D:
     def __init__(self, transform) -> None:
-        self.fov = 180 # in degree
+        self.fov = 360 # in degree
         self.fov_rad = np.radians(self.fov) # in radians
-        self.rays = 30 # pixels in 1d image from camera
+        self.rays = 90 # pixels in 1d image from camera
         self.ray_lenght = 500
         self.rays_angles = np.arange(start=-self.fov_rad/2, stop=self.fov_rad/2, step=self.fov_rad/self.rays)
         self.rays_end_points_init = [np.array([self.ray_lenght * np.cos(rays_angle), self.ray_lenght * np.sin(rays_angle), 1]) for rays_angle in self.rays_angles]
@@ -26,8 +26,6 @@ class Lidar2D:
         self.x , self.y, self.theta = get_XYTheta(self.transform)
         for i in range(len(self.rays_end_points)):
             self.rays_end_points[i] =  self.transform @ self.rays_end_points_init[i].T
-        # print(self.rays_end_points)
-        # print(self.transform)
         self.lidar_points = []
         self.lidar_distances = []
         
@@ -43,40 +41,10 @@ class Lidar2D:
         for i in range(len(self.rays_end_points)):
             self.rays_end_points[i] =  self.transform @ self.rays_end_points_init[i].T
 
-    def scan(self, obstacles_obj):
+    def scan(self, obstacles_lines):
         rays = self.get_ray_lines()
-        obstacles = []
-        for obstacle in obstacles_obj:
-            obstacles.append(obstacle.get_edge_points())
-        obstacles = list(obstacles)
-        self.lidar_points, self.lidar_distances = self.scan_process(rays, obstacles)
-        # print(type(self.lidar_scan), type(rays), type(obstacles))
-
-
-        # print(self.lidar_scan)
+        self.lidar_points, self.lidar_distances = find_collision_rays_2(rays, obstacles_lines)
         return self.lidar_points, self.lidar_distances
-
-    def scan_process(self, rays, obstacles):
-        # print(scan_new, rays, obstacles)
-        scan_new_points = []
-        scan_new_distances = []
-        for ray in rays:
-            points = []
-            point_min = copy.copy(ray[1])
-            dist_min = np.inf
-            for obstacle in obstacles:
-                point = find_collision_rays(ray, obstacle)
-                dist = distanse(ray[0], point)
-                if dist <= dist_min:
-                    dist_min = dist
-                    point_min = point
-            if dist_min <= self.ray_lenght-1:
-                scan_new_points.append(point_min)
-                scan_new_distances.append(dist_min)
-            else:
-                scan_new_points.append([np.inf, np.inf])
-                scan_new_distances.append(self.ray_lenght-1)
-        return scan_new_points, scan_new_distances
 
     def draw(self, screen):
         # draw sensor
@@ -88,15 +56,3 @@ class Lidar2D:
             # print('Отрисовка точки пересечения лидара', point[0] , point[1])
             if point[0] != np.inf or point[1] != np.inf:
                 pg.draw.circle(screen, (255,0,0), [point[0] , point[1]], 3, 3)
-
-        # draw SensorBar
-        # screen_size = screen.get_size()
-        # rect_size = 20
-        # lens = copy.copy(self.matrix)
-        # lens[lens >= self.ray_lenght] = self.ray_lenght
-        # lens[:] = lens[:] * 255 / 500
-        # # print(lens)
-        # for i in range(len(lens)):
-        #     r = round(lens[i])
-        #     pg.draw.rect(screen, (r, r, r), 
-        #          (rect_size*i, screen_size[1]-rect_size , rect_size, rect_size))

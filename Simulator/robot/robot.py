@@ -100,25 +100,18 @@ class Robot:
             self.edge_points[i] = [point[0], point[1]]
 
         obstacles = map.get_obstacles()
-        
+        obstacles_lines = []
         for obstacle in obstacles:
-            self.collision = find_collision(self.get_edge_points(), obstacle.get_edge_points())
-            if self.collision[0]:
-                break
+            obstacles_lines.extend(obstacle.get_lines())
 
+        self.collision = find_collision_2(self.get_lines(), obstacles_lines)
 
         # self.cell_size = round(1/map.scale)
 
         lidar_transform = self.transform @ self.lidar_transform
         self.lidar.update(lidar_transform)
-
-        self.lidar_points, self.lidar_distances = self.lidar.scan(obstacles)
-
+        self.lidar_points, self.lidar_distances = self.lidar.scan(obstacles_lines)
         self.robot_pose_on_map = (int(self.x//10), int(self.y//10))
-
-        
-        # print(self.get_waypoint_in_local())
-
 
         if self.auto_mode:
             self.controll(self.action)
@@ -135,6 +128,9 @@ class Robot:
     
     def get_edge_points(self):
         return self.edge_points
+    
+    def get_lines(self):
+        return [self.edge_points[0], self.edge_points[1]], [self.edge_points[1], self.edge_points[2]], [self.edge_points[2], self.edge_points[3]], [self.edge_points[3], self.edge_points[0]]
 
     def get_state(self):
         state = np.zeros((16))
@@ -314,15 +310,15 @@ class Robot:
         #         pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
 
         # draw trajectory
-        for i in range(1,len(self.trajectory)):
-            self.trajectory[i]
-            pg.draw.aaline(screen, robot_color, self.trajectory[i-1], self.trajectory[i])
+        # for i in range(1,len(self.trajectory)):
+        #     self.trajectory[i]
+        #     pg.draw.aaline(screen, robot_color, self.trajectory[i-1], self.trajectory[i])
 
 
         if self.collision[0]:
             pg.draw.circle(screen, way_color, [self.collision[1] , self.collision[2]], 7, 3)
 
-        pg.draw.circle(screen, way_color, [self.target[0] , self.target[1]], 7, 3)
+        # pg.draw.circle(screen, way_color, [self.target[0] , self.target[1]], 7, 3)
 
         
 

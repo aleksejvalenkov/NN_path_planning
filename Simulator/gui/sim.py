@@ -90,9 +90,9 @@ class Simulator:
         # init_pos = [randint(100,1700), randint(100,900), (random()-0.5)*2*np.pi]
         init_pos = [1600, 800, (random()-0.5)*2*np.pi]
         self.robot = Robot(self.map, init_pos=init_pos)
-        self.robots = []
-        for i in range(self.n_robots):
-            self.robots.append(Robot(self.map, init_pos=[100 + 100*i, 500, 0]))
+        # self.robots = []
+        # for i in range(self.n_robots):
+        #     self.robots.append(Robot(self.map, init_pos=[100 + 100*i, 500, 0]))
 
         self.robot.set_target(self.target)
         self.old_robots.append(self.robot)
@@ -205,16 +205,16 @@ class Simulator:
 
         # Render scene
             self.map.update()
-            # self.robot.update(self.map)
-            for robot in self.robots:
-                robot.update(self.map)
+            self.robot.update(self.map)
+            # for robot in self.robots:
+            #     robot.update(self.map)
 
         # Update display
             self.screen.fill(silver)
 
-            # self.robot.draw(self.screen)
-            for robot in self.robots:
-                robot.draw(self.screen)
+            self.robot.draw(self.screen)
+            # for robot in self.robots:
+            #     robot.draw(self.screen)
             self.map.draw(self.screen)
             if len(self.old_robots) > 15:
                 for i in range(len(self.old_robots)-15,len(self.old_robots)):
@@ -228,7 +228,7 @@ class Simulator:
             text = self.font.render(f'FPS: {self.clock.get_fps()}' , True, black)
             # text = self.font.render(f'FPS: {150.710801124572754}' , True, black)
             self.screen.blit(text, [30,65])
-            print(self.clock.get_fps())
+            # print(self.clock.get_fps())
 
             pg.display.update()
 
