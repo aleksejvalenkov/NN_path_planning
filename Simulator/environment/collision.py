@@ -1,39 +1,11 @@
 import numpy as np
-import torch
+# import torch
 from numpy.linalg import inv, det
 import copy
+import time
 
 
-def find_collision(BB1, BB2):
-
-    collision = False
-    points = []
-    
-    for point1_index in range(len(BB1)):
-        for point2_index in range(len(BB2)):
-            if point1_index == len(BB1)-1:
-                line1 = [BB1[point1_index], BB1[0]]
-            else:
-                line1 = [BB1[point1_index], BB1[point1_index+1]]
-
-            if point2_index == len(BB2)-1:
-                line2 = [BB2[point2_index], BB2[0]]
-            else:
-                line2 = [BB2[point2_index], BB2[point2_index+1]]
-            
-            intersection, x, y = lines_intersection(line1, line2)
-            if intersection:
-                collision = True
-                points.append([x, y])
-
-    if collision:
-        mean_point = np.mean(np.array(points), axis=0)
-    else:
-        mean_point = [None, None]
-
-    return collision, mean_point[0], mean_point[1]
-
-def find_collision_2(target_lines, obstacles_lines):
+def find_collision(target_lines, obstacles_lines):
     As = []
     Bs = []
     for target_line in target_lines:
@@ -51,12 +23,16 @@ def find_collision_2(target_lines, obstacles_lines):
                     Bs.append(B)
 
     # print(len(As))
-    cuda0 = torch.device('cuda:0')
-    As = torch.tensor(As,device=cuda0)
-    Bs = torch.tensor(Bs,device=cuda0)
-    # As_inv = torch.linalg.inv(As)
-    Xs = torch.linalg.solve(As, Bs)
-    Xs = Xs.detach().cpu().numpy().squeeze()
+    # cuda0 = torch.device('cuda:0')
+    # As = torch.tensor(As,device=cuda0)
+    # Bs = torch.tensor(Bs,device=cuda0)
+    # # As_inv = torch.linalg.inv(As)
+    # Xs = torch.linalg.solve(As, Bs)
+    # Xs = Xs.detach().cpu().numpy().squeeze()
+
+    As = np.array(As)
+    Bs = np.array(Bs)
+    Xs = np.linalg.solve(As, Bs)
     
     collision_points = []
     collision_dists = []
@@ -82,9 +58,11 @@ def find_collision_2(target_lines, obstacles_lines):
 
     return collision, mean_point[0], mean_point[1]
 
-def find_collision_rays_2(rays, obstacles_lines):
+def find_collision_rays(rays, obstacles_lines):
     As = []
     Bs = []
+    # T0 = time.time_ns()
+
     for ray in rays:
         x01, x11, y01, y11 = get_line_points(ray)
         for line_2 in obstacles_lines:
@@ -100,13 +78,19 @@ def find_collision_rays_2(rays, obstacles_lines):
                     Bs.append(B)
 
     # print(len(As))
-    cuda0 = torch.device('cuda:0')
-    As = torch.tensor(As,device=cuda0)
-    Bs = torch.tensor(Bs,device=cuda0)
+    # T1 = time.time_ns()
+    # cuda0 = torch.device('cuda:0')
+    # As = torch.tensor(As,device=cuda0)
+    # Bs = torch.tensor(Bs,device=cuda0)
     # As_inv = torch.linalg.inv(As)
-    Xs = torch.linalg.solve(As, Bs)
-    Xs = Xs.detach().cpu().numpy().squeeze()
-    
+    # Xs = torch.linalg.solve(As, Bs)
+    # Xs = Xs.detach().cpu().numpy().squeeze()
+
+    As = np.array(As)
+    Bs = np.array(Bs)
+    Xs = np.linalg.solve(As, Bs)
+    # T2 = time.time_ns()
+
     scan_points = []
     scan_dists = []
     n = len(obstacles_lines)
@@ -133,45 +117,14 @@ def find_collision_rays_2(rays, obstacles_lines):
         scan_points.append(point)
         scan_dists.append(dist)
 
+    # T3 = time.time_ns()
+
+    # print(f'puck - {(T1-T0) / 10**6} ms')
+    # print(f'solve - {(T2-T1) / 10**6} ms')
+    # print(f'unpuck - {(T3-T2) / 10**6} ms')
+
     return scan_points, scan_dists
 
-
-def lines_intersection(line1, line2):
-    intersection = False
-    x = None
-    y = None
-    a1, b1, c1, x01, x11, y01, y11 = get_line_param(line1[0], line1[1])
-    a2, b2, c2, x02, x12, y02, y12 = get_line_param(line2[0], line2[1])
-
-    A = np.array([[a1, b1],[a2, b2]])
-    B = np.array([[c1],[c2]])
-    deter = a1 * b2 + b1 * a2
-    if det(A) != 0.0:
-        X = np.dot(inv(A) , B).T
-    else:
-        print("paralel lines")
-        return intersection, x, y
-    
-    # x = np.round(X[0][0])
-    # y = np.round(-X[0][1])
-
-    x = X[0][0]
-    y = -X[0][1]
-
-    if (x01 <= x <= x11 \
-        or x01 >= x >= x11) \
-        and (y01 <= y <= y11 \
-        or y01 >= y >= y11) \
-        and (x02 <= x <= x12 \
-        or x02 >= x >= x12) \
-        and (y02 <= y <= y12 \
-        or y02 >= y >= y12):
-        intersection = True
-    else:
-        intersection = False
-        x = x
-        y = y
-    return intersection, x, y
 
 def get_line_param(edge1, edge2):
     x0, y0 = edge1

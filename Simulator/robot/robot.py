@@ -31,6 +31,8 @@ class Robot:
         self.joit_vec_ust = np.zeros((4))
         self.joit_ang_vel = np.zeros((4))
 
+        self.DRAW_TARGET = True
+
         self.x , self.y, self.theta = init_pos # robot's center coordinate
         self.edge_points_init = [np.array([-self.length_px/2, -self.width_px/2, 1]),
                                  np.array([-self.length_px/2, +self.width_px/2, 1]),
@@ -104,7 +106,7 @@ class Robot:
         for obstacle in obstacles:
             obstacles_lines.extend(obstacle.get_lines())
 
-        self.collision = find_collision_2(self.get_lines(), obstacles_lines)
+        self.collision = find_collision(self.get_lines(), obstacles_lines)
 
         # self.cell_size = round(1/map.scale)
 
@@ -289,15 +291,15 @@ class Robot:
         self.x , self.y, self.theta = get_XYTheta(self.transform)
         self.trajectory.append(np.array(self.get_pose())[0:2])
 
-    def draw(self, screen):
+    def draw(self, screen, color = robot_color):
 
         # pg.draw.circle(screen, robot_color, (self.x , self.y), self.robot_radius, 5)
         # pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(self.theta) * self.robot_radius , self.y + np.sin(self.theta) * self.robot_radius])
         # Drowing robot borders
-        pg.draw.aaline(screen, robot_color, (self.edge_points[0][0], self.edge_points[0][1]), (self.edge_points[1][0], self.edge_points[1][1]))
-        pg.draw.aaline(screen, robot_color, (self.edge_points[1][0], self.edge_points[1][1]), (self.edge_points[2][0], self.edge_points[2][1]))
-        pg.draw.aaline(screen, robot_color, (self.edge_points[2][0], self.edge_points[2][1]), (self.edge_points[3][0], self.edge_points[3][1]))
-        pg.draw.aaline(screen, robot_color, (self.edge_points[3][0], self.edge_points[3][1]), (self.edge_points[0][0], self.edge_points[0][1]))
+        pg.draw.aaline(screen, color, (self.edge_points[0][0], self.edge_points[0][1]), (self.edge_points[1][0], self.edge_points[1][1]))
+        pg.draw.aaline(screen, color, (self.edge_points[1][0], self.edge_points[1][1]), (self.edge_points[2][0], self.edge_points[2][1]))
+        pg.draw.aaline(screen, color, (self.edge_points[2][0], self.edge_points[2][1]), (self.edge_points[3][0], self.edge_points[3][1]))
+        pg.draw.aaline(screen, color, (self.edge_points[3][0], self.edge_points[3][1]), (self.edge_points[0][0], self.edge_points[0][1]))
 
 
         self.lidar.draw(screen)
@@ -318,7 +320,11 @@ class Robot:
         if self.collision[0]:
             pg.draw.circle(screen, way_color, [self.collision[1] , self.collision[2]], 7, 3)
 
-        # pg.draw.circle(screen, way_color, [self.target[0] , self.target[1]], 7, 3)
+        if self.DRAW_TARGET:
+            target_arrow = [self.target[0] + 25 * np.cos(self.target[2]), self.target[1] + 25 * np.sin(self.target[2])]
+            pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 7, 3)
+            pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
+        
 
         
 

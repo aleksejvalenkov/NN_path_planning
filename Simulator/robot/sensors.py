@@ -43,7 +43,7 @@ class Lidar2D:
 
     def scan(self, obstacles_lines):
         rays = self.get_ray_lines()
-        self.lidar_points, self.lidar_distances = find_collision_rays_2(rays, obstacles_lines)
+        self.lidar_points, self.lidar_distances = find_collision_rays(rays, obstacles_lines)
         return self.lidar_points, self.lidar_distances
 
     def draw(self, screen):
