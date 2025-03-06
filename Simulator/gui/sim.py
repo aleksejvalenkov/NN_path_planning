@@ -26,6 +26,9 @@ def create_folder(workspace:str, folder:str) -> None:
         print(f"create folder with path {0}".format(path))
     return path
 
+def distance(point_1, point_2):
+    return np.sqrt(np.square(point_1[0] - point_2[0]) + np.square(point_1[1] - point_2[1]))
+
 class Action:
     def __init__(self):
         self.n = 6
@@ -88,8 +91,8 @@ class Simulator:
         # init objects
         self.map = Map(self.WINDOW_SIZE)
         while True:
-            x = randint(0, self.WINDOW_SIZE[0])
-            y = randint(0, self.WINDOW_SIZE[1])
+            x = randint(0, self.WINDOW_SIZE[0]-1)
+            y = randint(0, self.WINDOW_SIZE[1]-1)
             if not self.map.bin_map_og[y,x]:
                 break
         fi = (random()-0.5)*2*np.pi
@@ -97,9 +100,10 @@ class Simulator:
         self.robot = Robot(self.map, init_pos=init_pos)
 
         while True:
-            x = randint(0, self.WINDOW_SIZE[0])
-            y = randint(0, self.WINDOW_SIZE[1])
-            if not self.map.bin_map_og[y,x]:
+            x = randint(0, self.WINDOW_SIZE[0]-1)
+            y = randint(0, self.WINDOW_SIZE[1]-1)
+            distance_robot_target = distance([init_pos[0],init_pos[1]], [x,y])
+            if not self.map.bin_map_og[y,x] and distance_robot_target < 300:
                 break
         fi = (random()-0.5)*2*np.pi
         self.robot.set_target([x, y, fi])
@@ -112,7 +116,7 @@ class Simulator:
         return state, info
 
     def step(self, action):
-        self.robot.controll(action) # Перемещаем робота на одно действие
+        self.robot.controll(action, from_action_dict=True) # Перемещаем робота на одно действие
 
         self.pygame_iter() # Обновляем состояние среды
         next_state = self.robot.get_state()
@@ -179,9 +183,7 @@ class Simulator:
     def pygame_iter(self):
 
         
-        if True:
-            if SIM_TIME:
-                self.clock.tick(self.FPS)
+
         # Check events
             for i in pg.event.get():
                 if i.type == QUIT:
@@ -212,12 +214,16 @@ class Simulator:
                 self.robot.controll([0.5, 0, 0.15], False)
 
 
-
-        # Render scene
             self.map.update()
             self.robot.update(self.map)
             # for robot in self.robots:
             #     robot.update(self.map)
+
+        # Render scene
+    def render(self):
+
+            if SIM_TIME:
+                self.clock.tick(self.FPS)
 
             self.screen.fill(silver)
 
@@ -229,9 +235,9 @@ class Simulator:
             # for robot in self.robots:
             #     robot.draw(self.screen)
 
-            if len(self.old_robots) > 15:
-                for i in range(len(self.old_robots)-15,len(self.old_robots)):
-                    self.old_robots[i].draw(self.screen)
+            # if len(self.old_robots) > 15:
+            #     for i in range(len(self.old_robots)-15,len(self.old_robots)):
+            #         self.old_robots[i].draw(self.screen)
 
             x,y,theta = self.robot.get_pose()
             text = self.font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)

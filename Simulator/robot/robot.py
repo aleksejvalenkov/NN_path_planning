@@ -135,10 +135,10 @@ class Robot:
         return [self.edge_points[0], self.edge_points[1]], [self.edge_points[1], self.edge_points[2]], [self.edge_points[2], self.edge_points[3]], [self.edge_points[3], self.edge_points[0]]
 
     def get_state(self):
-        state = np.zeros((16))
-        # 10 mins ranges in 30 rays of lidar [10]
+        state = np.zeros((26))
+        # 20 mins ranges in 60 rays of lidar [20]
         lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
-        lidar_distances_mins = np.zeros((10))
+        lidar_distances_mins = np.zeros((20))
         c = len(lidar_distances_norm) // len(lidar_distances_mins)
         for i in range(len(lidar_distances_mins)):
             lidar_distances_mins[i] = np.min(lidar_distances_norm[i*c:i*c+c])
@@ -152,13 +152,13 @@ class Robot:
         robot_orientation = np.tanh(self.theta)
         # target orientation [1]
         target_orientation = np.tanh(self.target[2])
-
-        state[0:10] = lidar_distances_mins
-        state[10:12] = velocity
-        state[12:14] = target_point_vector
+        
+        state[0:20] = lidar_distances_mins
+        state[20:22] = velocity
+        state[22:24] = target_point_vector
         # print('target_point_vector ', target_point_vector)
-        state[14] = robot_orientation
-        state[15] = target_orientation
+        state[24] = robot_orientation
+        state[25] = target_orientation
         # print(state.shape)
         # print(state)
         self.state = state
@@ -173,25 +173,25 @@ class Robot:
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         Co = 30/self.lidar.ray_lenght
         Cop = 100/self.lidar.ray_lenght
-        Xt = np.min(self.state[0:10])
+        Xt = np.min(self.state[0:20])
         max_steps = 1000
         # print('Xt= ', Xt)
-        hd = self.state[15] - self.state[14]
-        Cr = 10
-        Cp = 0.0
+        hd = self.state[25] - self.state[24]
+        Cr = 10.0
+        Cp = 1.0
         Cro = 5 * self.lidar.ray_lenght
         # print(self.Dt_l, Dt)
         if Dt < Cd :
             reward = max_revard
             truncated = True
-        elif Xt < Co:
-            reward = -100
+        elif self.collision[0]: # Xt < Co or
+            reward = -1000
             terminated = True
         elif self.n_steps > max_steps:
-            reward = -100
+            reward = -500
             terminated = True
-        # elif Xt < Cop:
-        #     reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd) - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
+        elif Xt < Cop:
+            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd) - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
         else:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd)
 
@@ -202,8 +202,10 @@ class Robot:
 
 
     def controll(self, action, from_action_dict=True):
+        # print("action = ", action)
         if from_action_dict:
-            move_vec = self.action_ves.get(action)
+            # move_vec = self.action_ves.get(np.argmax(action))
+            move_vec = action / 10
         else:
             move_vec = action
         self.joit_vec_ust = self.move_vec_to_joit_vec(move_vec)
@@ -312,9 +314,9 @@ class Robot:
         #         pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
 
         # draw trajectory
-        # for i in range(1,len(self.trajectory)):
-        #     self.trajectory[i]
-        #     pg.draw.aaline(screen, robot_color, self.trajectory[i-1], self.trajectory[i])
+        for i in range(1,len(self.trajectory)):
+            self.trajectory[i]
+            pg.draw.aaline(screen, robot_color, self.trajectory[i-1], self.trajectory[i])
 
 
         if self.collision[0]:

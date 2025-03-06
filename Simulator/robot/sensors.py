@@ -17,7 +17,7 @@ class Lidar2D:
     def __init__(self, transform) -> None:
         self.fov = 360 # in degree
         self.fov_rad = np.radians(self.fov) # in radians
-        self.rays = 90 # pixels in 1d image from camera
+        self.rays = 60 # pixels in 1d image from camera
         self.ray_lenght = 500
         self.rays_angles = np.arange(start=-self.fov_rad/2, stop=self.fov_rad/2, step=self.fov_rad/self.rays)
         self.rays_end_points_init = [np.array([self.ray_lenght * np.cos(rays_angle), self.ray_lenght * np.sin(rays_angle), 1]) for rays_angle in self.rays_angles]

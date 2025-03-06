@@ -5,4 +5,5 @@ env.init_window()
 env.reset()
 while True:
     env.step(0)
+    env.render()
     # print(sim.get_robot_data())

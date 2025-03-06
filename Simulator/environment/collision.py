@@ -6,21 +6,9 @@ import time
 
 
 def find_collision(target_lines, obstacles_lines):
-    As = []
-    Bs = []
-    for target_line in target_lines:
-        x01, x11, y01, y11 = get_line_points(target_line)
-        for line_2 in obstacles_lines:
-        
-                x02, x12, y02, y12 = get_line_points(line_2)
+    
+    As, Bs = puck_lines_to_matrix(target_lines, obstacles_lines)
 
-                A = np.array([[(x11-x01), -(x12-x02)],
-                            [(y11-y01), -(y12-y02)]])
-                B = np.array([[(x02-x01)],
-                            [(y02-y01)]])
-                if (x11-x01)/(x12-x02) != (y11-y01)/(y12-y02):
-                    As.append(A)
-                    Bs.append(B)
 
     # print(len(As))
     # cuda0 = torch.device('cuda:0')
@@ -30,8 +18,6 @@ def find_collision(target_lines, obstacles_lines):
     # Xs = torch.linalg.solve(As, Bs)
     # Xs = Xs.detach().cpu().numpy().squeeze()
 
-    As = np.array(As)
-    Bs = np.array(Bs)
     Xs = np.linalg.solve(As, Bs)
     
     collision_points = []
@@ -59,25 +45,10 @@ def find_collision(target_lines, obstacles_lines):
     return collision, mean_point[0], mean_point[1]
 
 def find_collision_rays(rays, obstacles_lines):
-    As = []
-    Bs = []
+    
     # T0 = time.time_ns()
+    As, Bs = puck_lines_to_matrix(rays, obstacles_lines)
 
-    for ray in rays:
-        x01, x11, y01, y11 = get_line_points(ray)
-        for line_2 in obstacles_lines:
-        
-                x02, x12, y02, y12 = get_line_points(line_2)
-
-                A = np.array([[(x11-x01), -(x12-x02)],
-                            [(y11-y01), -(y12-y02)]])
-                B = np.array([[(x02-x01)],
-                            [(y02-y01)]])
-                if (x11-x01)/(x12-x02) != (y11-y01)/(y12-y02):
-                    As.append(A)
-                    Bs.append(B)
-
-    # print(len(As))
     # T1 = time.time_ns()
     # cuda0 = torch.device('cuda:0')
     # As = torch.tensor(As,device=cuda0)
@@ -86,8 +57,6 @@ def find_collision_rays(rays, obstacles_lines):
     # Xs = torch.linalg.solve(As, Bs)
     # Xs = Xs.detach().cpu().numpy().squeeze()
 
-    As = np.array(As)
-    Bs = np.array(Bs)
     Xs = np.linalg.solve(As, Bs)
     # T2 = time.time_ns()
 
@@ -103,6 +72,7 @@ def find_collision_rays(rays, obstacles_lines):
         params_t = np.where(((0 <= t_) & (t_ <= 1) & (0 <= s_) & (s_ <= 1)), t_, np.inf)
         params_t = params_t[np.isfinite(params_t)]
         points = np.vstack([(x11-x01) * params_t + x01, (y11-y01) * params_t + y01]).T
+        
         zero_points = np.full_like(points, line1[0])
         dists = np.linalg.norm(points - zero_points, axis=1)
 
@@ -113,6 +83,7 @@ def find_collision_rays(rays, obstacles_lines):
         else:
             point = copy.copy(line1[1])
             dist = np.inf
+            dist = 500
 
         scan_points.append(point)
         scan_dists.append(dist)
@@ -139,6 +110,24 @@ def get_line_points(line):
     x0, y0 = edge1
     x1, y1 = edge2
     return x0, x1, y0, y1
+
+def puck_lines_to_matrix(lines_1, lines_2):
+    lines_1_vec = np.repeat(np.array(lines_1), len(lines_2), axis=0)
+    lines_2_vec = np.array(lines_2 * len(lines_1))
+
+    x01s = lines_1_vec[:,0,0]
+    x11s = lines_1_vec[:,1,0]
+    y01s = lines_1_vec[:,0,1]
+    y11s = lines_1_vec[:,1,1]
+
+    x02s = lines_2_vec[:,0,0]
+    x12s = lines_2_vec[:,1,0]
+    y02s = lines_2_vec[:,0,1]
+    y12s = lines_2_vec[:,1,1]
+
+    As = np.vstack([[(x11s-x01s), -(x12s-x02s)],[(y11s-y01s), -(y12s-y02s)]]).T.reshape((len(lines_1_vec), 2, 2))
+    Bs = np.vstack([[(x02s-x01s)],[(y02s-y01s)]]).T.reshape((len(lines_1_vec), 2, 1))
+    return As, Bs
 
 def distance(point_1, point_2):
     return np.sqrt(np.square(point_1[0] - point_2[0]) + np.square(point_1[1] - point_2[1]))
