@@ -23,14 +23,10 @@ def get_XY(transform):
     y = transform[1,2]
     return x, y
 
-def constrain(x, a, b):
-    if x > 0.0 and x < abs(a):
-        return a
-    elif x > 0.0 and x > abs(b):
-        return b
-    elif x < 0.0 and x > -abs(a):
-        return -a
-    elif x < 0.0 and x < -abs(b):
-        return -b
+def constrain(x, min_x, max_x):
+    if x > max_x:
+        return max_x
+    elif x < min_x:
+        return min_x
     else:
         return x

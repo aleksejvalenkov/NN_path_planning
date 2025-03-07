@@ -3,8 +3,10 @@ import numpy as np
 
 import gymnasium as gym
 from gymnasium import spaces
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 # import the skrl components to build the RL system
 from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
@@ -36,8 +38,8 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Box(low=-1, high=1,
                                             shape=(3,), dtype=np.float64)
         # Example for using image as input (channel-first; channel-last also works):
-        self.observation_space = spaces.Box(low=-2000, high=2000,
-                                            shape=(26,), dtype=np.float64)
+        self.observation_space = spaces.Box(low=-3, high=3,
+                                            shape=(27,), dtype=np.float64)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -62,53 +64,102 @@ class CustomEnv(gym.Env):
 # seed for reproducibility
 set_seed()  # e.g. `set_seed(42)` for fixed seed
 
+class ResidualBlock(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(ResidualBlock, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        # self._init_weights()
 
-# define models (stochastic and deterministic models) using mixins
+    def forward(self, x):
+        residual = x
+        out = F.leaky_relu(self.fc1(x))
+        out = self.fc2(out)
+        out += residual
+        return F.leaky_relu(out)
+
+    # def _init_weights(self):
+    #     torch.nn.init.xavier_uniform_(self.fc1.weight)
+    #     torch.nn.init.xavier_uniform_(self.fc2.weight)
+
+
+# define the model
 class Policy(GaussianMixin, Model):
-    def __init__(self, observation_space, action_space, device, clip_actions=False,
-                 clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum"):
+    def __init__(self, observation_space, action_space, device,
+                 clip_actions=False, clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum"):
         Model.__init__(self, observation_space, action_space, device)
         GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
 
-        self.net = nn.Sequential(nn.Linear(self.num_observations, 1024),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(1024, 1024),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(1024, 512),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(512, 256),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(256, 128),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(128, 64),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(64, self.num_actions))
+        state_dim = int(self.num_observations)
+        res1_out_dim = state_dim
+        res2_out_dim = state_dim * 2
+        conc1_dim = state_dim + res1_out_dim
+
+        self.res_block1 = ResidualBlock(
+            input_dim=state_dim,
+            hidden_dim=512,
+            output_dim=res1_out_dim,
+        )
+        self.res_block2 = ResidualBlock(
+            input_dim=conc1_dim,
+            hidden_dim=512,
+            output_dim=res2_out_dim,
+        )
+        self.fc = nn.Linear(res2_out_dim + conc1_dim, int(self.num_actions))
+        # torch.nn.init.xavier_uniform_(self.fc.weight)
         self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
     def compute(self, inputs, role):
-        return torch.tanh(self.net(inputs["states"])), self.log_std_parameter, {}
+        state = inputs["states"]
+        x = self.res_block1(state)
+        x = torch.cat([x, state], dim=-1)
+
+        concat1 = x
+
+        x = self.res_block2(x)
+        concat2 = torch.cat([x, concat1], dim=-1)
+
+        output = F.tanh(self.fc(concat2))
+
+        return output, self.log_std_parameter, {}
+
 
 class Value(DeterministicMixin, Model):
     def __init__(self, observation_space, action_space, device, clip_actions=False):
         Model.__init__(self, observation_space, action_space, device)
         DeterministicMixin.__init__(self, clip_actions)
 
-        self.net = nn.Sequential(nn.Linear(self.num_observations, 1024),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(1024, 1024),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(1024, 512),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(512, 256),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(256, 128),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(128, 64),
-                                 nn.LeakyReLU(),
-                                 nn.Linear(64, 1))
+        state_dim = int(self.num_observations)
+        res1_out_dim = state_dim
+        res2_out_dim = state_dim * 2
+        conc1_dim = state_dim + res1_out_dim
+
+        self.res_block1 = ResidualBlock(
+            input_dim=state_dim,
+            hidden_dim=512,
+            output_dim=res1_out_dim,
+        )
+        self.res_block2 = ResidualBlock(
+            input_dim=conc1_dim,
+            hidden_dim=512,
+            output_dim=res2_out_dim,
+        )
+        self.fc = nn.Linear(res2_out_dim + conc1_dim, int(1))
+        # torch.nn.init.xavier_uniform_(self.fc.weight)
 
     def compute(self, inputs, role):
-        return self.net(inputs["states"]), {}
+        state = inputs["states"]
+        x = self.res_block1(state)
+        x = torch.cat([x, state], dim=-1)
+
+        concat1 = x
+
+        x = self.res_block2(x)
+        concat2 = torch.cat([x, concat1], dim=-1)
+
+        output = F.tanh(self.fc(concat2))
+
+        return output, {}
 
 
 # load and wrap the gymnasium environment.
@@ -129,7 +180,7 @@ device = env.device
 
 
 # instantiate a memory as rollout buffer (any memory can be used for this)
-memory = RandomMemory(memory_size=512, device=device)
+memory = RandomMemory(memory_size=2048, device=device)
 
 
 # instantiate the agent's models (function approximators).
@@ -143,7 +194,7 @@ models["value"] = Value(env.observation_space, env.action_space, device)
 # configure and instantiate the agent (visit its documentation to see all the options)
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#configuration-and-hyperparameters
 cfg = PPO_DEFAULT_CONFIG.copy()
-cfg["rollouts"] = 512  # memory_size
+cfg["rollouts"] = 2048  # memory_size
 cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
 cfg["discount_factor"] = 0.9
@@ -165,7 +216,7 @@ cfg["value_preprocessor"] = RunningStandardScaler
 cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
-cfg["experiment"]["checkpoint_interval"] = "auto"
+cfg["experiment"]["checkpoint_interval"] = 50000
 cfg["experiment"]["directory"] = "runs/torch/robot"
 
 agent = PPO(models=models,
@@ -175,10 +226,10 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-agent.load('runs/torch/robot/25-03-07_09-08-54-030402_PPO/checkpoints/best_agent.pt')
+# agent.load('runs/torch/robot/25-03-07_22-34-23-484590_PPO/checkpoints/best_agent.pt')
 
 # configure and instantiate the RL trainer
-cfg_trainer = {"timesteps": 160000, "headless": True}
+cfg_trainer = {"timesteps": 1000000, "headless": True}
 trainer = SequentialTrainer(cfg=cfg_trainer, env=env, agents=[agent])
 
 # start training

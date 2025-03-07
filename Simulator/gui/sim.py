@@ -108,7 +108,7 @@ class Simulator:
         fi = (random()-0.5)*2*np.pi
         self.robot.set_target([x, y, fi])
 
-        self.old_robots.append(self.robot)
+        # self.old_robots.append(self.robot)
         # self.pygame_iter() # Обновляем состояние среды
         state = self.robot.get_state()
 
@@ -116,7 +116,7 @@ class Simulator:
         return state, info
 
     def step(self, action):
-        self.robot.controll(action, from_action_dict=True) # Перемещаем робота на одно действие
+        self.robot.controll(action, from_action_dict=False) # Перемещаем робота на одно действие
 
         self.pygame_iter() # Обновляем состояние среды
         next_state = self.robot.get_state()

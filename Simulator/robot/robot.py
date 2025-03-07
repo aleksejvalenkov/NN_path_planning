@@ -135,7 +135,7 @@ class Robot:
         return [self.edge_points[0], self.edge_points[1]], [self.edge_points[1], self.edge_points[2]], [self.edge_points[2], self.edge_points[3]], [self.edge_points[3], self.edge_points[0]]
 
     def get_state(self):
-        state = np.zeros((26))
+        state = np.zeros((27))
         # 20 mins ranges in 60 rays of lidar [20]
         lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
         lidar_distances_mins = np.zeros((20))
@@ -144,7 +144,7 @@ class Robot:
             lidar_distances_mins[i] = np.min(lidar_distances_norm[i*c:i*c+c])
         
         # Velocity lin, angular [2]
-        velocity = np.array([np.exp(self.Vx), np.tanh(self.W)])
+        velocity = np.array([np.tanh(self.Vx), np.tanh(self.Vy), np.tanh(self.W)])
         # Target point vector [2]
         target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1])
         target_point_vector = np.array([target_point_loc[0], target_point_loc[1]])
@@ -153,12 +153,12 @@ class Robot:
         # target orientation [1]
         target_orientation = np.tanh(self.target[2])
         
-        state[0:20] = lidar_distances_mins
-        state[20:22] = velocity
-        state[22:24] = target_point_vector
+        state[0:20] = lidar_distances_mins # normalize from 0-500 to 0-1
+        state[20:23] = velocity # in meters per sec
+        state[23:25] = target_point_vector / 100 # in meters
         # print('target_point_vector ', target_point_vector)
-        state[24] = robot_orientation
-        state[25] = target_orientation
+        state[25] = robot_orientation # in rad
+        state[26] = target_orientation # in rad
         # print(state.shape)
         # print(state)
         self.state = state
@@ -179,8 +179,8 @@ class Robot:
         hd = self.state[25] - self.state[24]
         Cr = 10.0
         Cp = 0.02
-        Cro = 5 * self.lidar.ray_lenght
-        # print(self.Dt_l, Dt)
+        Cro = 5.0 * self.lidar.ray_lenght
+        # print('Dt = ', Dt)
         if Dt < Cd :
             reward = max_revard
             truncated = True
@@ -203,11 +203,20 @@ class Robot:
 
     def controll(self, action, from_action_dict=True):
         # print("action = ", action)
+        self.max_vx = 0.2
+        self.max_vy = 0.2
+        self.max_w = 0.05
+        action = np.array(action)
         if from_action_dict:
-            # move_vec = self.action_ves.get(np.argmax(action))
-            move_vec = action / 10
+            move_vec = self.action_ves.get(np.argmax(action))
+            # move_vec = action 
         else:
-            move_vec = action
+            move_vec = np.zeros((3))
+            move_vec[0] = constrain(action[0], -self.max_vx, self.max_vx)
+            move_vec[1] = constrain(action[1], -self.max_vy, self.max_vy)
+            move_vec[2] = constrain(action[2], -self.max_w,  self.max_w)
+        
+        # print("move_vec = ", move_vec)
         self.joit_vec_ust = self.move_vec_to_joit_vec(move_vec)
         # print('joit_vec_ust =', self.joit_vec_ust)
         

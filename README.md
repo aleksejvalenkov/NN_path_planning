@@ -9,3 +9,7 @@ pip3 install -r requirements.txt
 ``` bash
 python3 Simulator/sim.py 
 ```
+
+#TODO
+настроить выход модели
+перестроить архитектуру по resnet
