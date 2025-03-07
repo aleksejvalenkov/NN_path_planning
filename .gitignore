@@ -9,6 +9,7 @@ build/
 wheels/
 lib/
 lib64/
+runs/
 
 # PyCharm
 .idea/

@@ -175,10 +175,10 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/robot/25-03-04_23-50-13-316805_PPO/checkpoints/agent_160000.pt')
+agent.load('runs/torch/robot/25-03-07_09-08-54-030402_PPO/checkpoints/best_agent.pt')
 
 # configure and instantiate the RL trainer
-cfg_trainer = {"timesteps": 100000, "headless": True}
+cfg_trainer = {"timesteps": 160000, "headless": True}
 trainer = SequentialTrainer(cfg=cfg_trainer, env=env, agents=[agent])
 
 # start training

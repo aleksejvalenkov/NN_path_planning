@@ -169,7 +169,7 @@ class Robot:
         terminated = False
         truncated = False
         max_revard = 1000
-        Cd = 30
+        Cd = 5
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         Co = 30/self.lidar.ray_lenght
         Cop = 100/self.lidar.ray_lenght
@@ -178,7 +178,7 @@ class Robot:
         # print('Xt= ', Xt)
         hd = self.state[25] - self.state[24]
         Cr = 10.0
-        Cp = 1.0
+        Cp = 0.02
         Cro = 5 * self.lidar.ray_lenght
         # print(self.Dt_l, Dt)
         if Dt < Cd :
@@ -188,7 +188,7 @@ class Robot:
             reward = -1000
             terminated = True
         elif self.n_steps > max_steps:
-            reward = -500
+            reward = -300
             terminated = True
         elif Xt < Cop:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd) - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
