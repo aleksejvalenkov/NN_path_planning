@@ -165,8 +165,8 @@ class Value(DeterministicMixin, Model):
 
 # load and wrap the gymnasium environment.
 
-# env = CustomEnv(render_mode="human")
-env = CustomEnv(render_mode=None)
+env = CustomEnv(render_mode="human")
+# env = CustomEnv(render_mode=None)
 
 
 # note: the environment version may change depending on the gymnasium version
@@ -228,7 +228,7 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-agent.load('runs/torch/robot_fix_reward/25-03-08_11-26-52-644534_PPO/checkpoints/agent_150000.pt')
+agent.load('runs/torch/robot_fix_reward/25-03-08_12-26-24-334948_PPO/checkpoints/agent_50000.pt')
 
 # configure and instantiate the RL trainer
 cfg_trainer = {"timesteps": 50000, "headless": True}

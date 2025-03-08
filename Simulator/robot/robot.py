@@ -177,7 +177,7 @@ class Robot:
         # print('Xt= ', Xt)
         hd = np.abs(self.state[25])
         Cr = 10.0
-        Cp = 0.2
+        Cp = 2
         Cro = 5.0 * self.lidar.ray_lenght
         # print('Dt = ', Dt)
         if Dt < Cd :
