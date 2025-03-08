@@ -179,7 +179,7 @@ env = CustomEnv(render_mode="human")
 # env.device = "cpu"
 env = wrap_env(env)
 device = env.device
-
+print(device)
 
 # instantiate a memory as rollout buffer (any memory can be used for this)
 memory = RandomMemory(memory_size=2048, device=device)
@@ -218,7 +218,7 @@ cfg["value_preprocessor"] = RunningStandardScaler
 cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
-cfg["experiment"]["checkpoint_interval"] = 50000
+cfg["experiment"]["checkpoint_interval"] = "auto"
 cfg["experiment"]["directory"] = "runs/torch/robot_fix_reward"
 
 agent = PPO(models=models,
@@ -228,10 +228,10 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-agent.load('runs/torch/robot_fix_reward/25-03-08_12-26-24-334948_PPO/checkpoints/agent_50000.pt')
+agent.load('runs/torch/robot_fix_reward/25-03-08_13-08-47-017780_PPO/checkpoints/agent_50000.pt')
 
 # configure and instantiate the RL trainer
-cfg_trainer = {"timesteps": 50000, "headless": True}
+cfg_trainer = {"timesteps": 1000000, "headless": True}
 trainer = SequentialTrainer(cfg=cfg_trainer, env=env, agents=[agent])
 
 # start training

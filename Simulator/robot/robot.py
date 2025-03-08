@@ -204,7 +204,7 @@ class Robot:
     def controll(self, action, from_action_dict=True):
         # print("action = ", action)
         self.max_vx = 0.2
-        self.max_vy = 0.2
+        self.max_vy = 0.05
         self.max_w = 0.05
         action = np.array(action)
         if from_action_dict:
