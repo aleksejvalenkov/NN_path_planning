@@ -26,8 +26,8 @@ class Robot:
         self.wheel_radius = 0.1
         self.length_px = self.length_m * 100 # In pixels
         self.width_px = self.width_m * 100 # In pixels
-        self.wheel_eps = 0.9
-        self.max_wheel_vel = 10
+        self.wheel_eps = 0.1
+        self.max_wheel_vel = 10/2
         self.joit_vec_ust = np.zeros((4))
         self.joit_ang_vel = np.zeros((4))
 

@@ -111,7 +111,7 @@ class MoveableObstacle:
 
     def update(self, obstacles):
         if self.state == 0:
-            self.teleop(teleop_vec=[0.2,0,0])
+            self.teleop(teleop_vec=[0.1,0,0])
         if self.state == 1:
             self.teleop(teleop_vec=[-0.05,0,0.157])
             self.state_1_counter += 1

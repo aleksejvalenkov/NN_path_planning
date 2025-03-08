@@ -17,7 +17,7 @@ from environment.obstacles import *
 
 
 class Map:
-    def __init__(self, size = (200, 200)) -> None:
+    def __init__(self, size = (800, 800)) -> None:
         self.obs_param = 200
         self.size = size
         self.scale = 0.1
@@ -26,10 +26,12 @@ class Map:
         self.moveable_obstacles = []
         # Cтены 
         # Нужен генератор карт
-        obstacle_l = Obstacle(init_pos=[30//2, 1000//2, 0], init_size=[30, 1000])
-        obstacle_r = Obstacle(init_pos=[1800-30//2, 1000//2, 0], init_size=[30, 1000])
-        obstacle_t = Obstacle(init_pos=[1800//2, 30//2, 0], init_size=[1800, 30])
-        obstacle_b = Obstacle(init_pos=[1800//2, 1000-30//2, 0], init_size=[1800, 30])
+        border_width = 10
+
+        obstacle_l = Obstacle(init_pos=[border_width//2, size[1]//2, 0], init_size=[border_width, size[1]])
+        obstacle_r = Obstacle(init_pos=[size[0]-border_width//2, size[1]//2, 0], init_size=[border_width, size[1]])
+        obstacle_t = Obstacle(init_pos=[size[0]//2, border_width//2, 0], init_size=[size[0], border_width])
+        obstacle_b = Obstacle(init_pos=[size[0]//2, size[1]-border_width//2, 0], init_size=[size[0], border_width])
 
         obstacle_0 = Obstacle(init_pos=[200, 330//2+30, 0], init_size=[30, 330])
         obstacle_1 = Obstacle(init_pos=[200+800//2, 330+30//2, 0], init_size=[800, 30])
@@ -38,7 +40,12 @@ class Map:
         obstacle_4 = Obstacle(init_pos=[400+150+700, 750+30//2, -2.3], init_size=[600, 30])
         obstacle_5 = Obstacle(init_pos=[1000-30//2, 230//2+30, 0], init_size=[30, 230])
 
-        obstacle_6 = Obstacle(init_pos=[1300, 500, 0], init_size=[50, 50])
+        obstacle_box_1 = Obstacle(init_pos=[150, 150, 0], init_size=[80, 80])
+        obstacle_box_2 = Obstacle(init_pos=[300, 400, 0], init_size=[80, 80])
+        obstacle_box_3 = Obstacle(init_pos=[500, 400, 0], init_size=[80, 80])
+        obstacle_box_4 = Obstacle(init_pos=[620, 620, 1], init_size=[200, 50])
+        obstacle_box_5 = Obstacle(init_pos=[600, 150, 0], init_size=[80, 80])
+
         # obstacle_7 = Obstacle(init_pos=[500, 500, 0])
         # obstacle_8 = Obstacle(init_pos=[200, 200, 0])
         # obstacle_9 = Obstacle(init_pos=[500, 100, 1.571])
@@ -50,14 +57,18 @@ class Map:
         self.add_obstacle(obstacle_t)
         self.add_obstacle(obstacle_b)
 
-        self.add_obstacle(obstacle_0)
-        self.add_obstacle(obstacle_1)
-        self.add_obstacle(obstacle_2)
-        self.add_obstacle(obstacle_3)
-        self.add_obstacle(obstacle_4)
-        self.add_obstacle(obstacle_5)
+        # self.add_obstacle(obstacle_0)
+        # self.add_obstacle(obstacle_1)
+        # self.add_obstacle(obstacle_2)
+        # self.add_obstacle(obstacle_3)
+        # self.add_obstacle(obstacle_4)
+        # self.add_obstacle(obstacle_5)
 
-        self.add_obstacle(obstacle_6)
+        self.add_obstacle(obstacle_box_1)
+        self.add_obstacle(obstacle_box_2)
+        self.add_obstacle(obstacle_box_3)
+        self.add_obstacle(obstacle_box_4)
+        self.add_obstacle(obstacle_box_5)
         # map.add_obstacle(obstacle_7)
         # map.add_obstacle(obstacle_8)
         # map.add_obstacle(obstacle_9)
@@ -66,7 +77,7 @@ class Map:
 
         self.bin_map, self.bin_map_og = self.init_bool_map()
 
-        for i in range(10):
+        for i in range(5):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose())
             self.moveable_obstacles.append(moveable_obstacle)
 

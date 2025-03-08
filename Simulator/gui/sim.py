@@ -41,7 +41,7 @@ class Simulator:
         
         self.FPS = 1000
 
-        self.WINDOW_SIZE = (1800, 1000)
+        self.WINDOW_SIZE = (800, 800)
         self.target = [self.WINDOW_SIZE[0]//2, self.WINDOW_SIZE[1]//2, 0.0]
 
         # init objects
