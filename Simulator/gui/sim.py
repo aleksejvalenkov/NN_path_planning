@@ -13,7 +13,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from pygame.locals import *
-from utils.utils import *
 from utils.transforms import *
 from robot.robot import *
 from environment.map import *

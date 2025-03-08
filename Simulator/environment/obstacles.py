@@ -7,7 +7,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from utils.transforms import *
-from utils.utils import *
 from gui.palette import *
 from environment.collision import *
 

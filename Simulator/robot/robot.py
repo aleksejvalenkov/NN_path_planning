@@ -11,7 +11,6 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from utils.transforms import *
 from robot.sensors import *
-from utils.utils import *
 from gui.palette import *
 from environment.collision import *
 
