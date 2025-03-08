@@ -11,6 +11,21 @@ def get_transform(t_vec, theta):
 
     return transform
 
+def get_rot_mat_from_theta(theta):
+    rot_matrix = np.array([[np.cos(theta), -np.sin(theta)],
+                    [np.sin(theta), np.cos(theta)]])
+    return rot_matrix
+
+def get_theta_from_rot_mat(rot_matrix):
+    theta = np.arctan2(rot_matrix[1,0], rot_matrix[0,0])
+    return theta
+
+def get_theta_error(theta_1, theta_2):
+    mat_1 = get_rot_mat_from_theta(theta_1)
+    mat_2 = get_rot_mat_from_theta(theta_2)
+    mat_err = mat_2 @ mat_1.T
+    return get_theta_from_rot_mat(mat_err)
+
 def get_XYTheta(transform):
     x = transform[0,2]
     y = transform[1,2]

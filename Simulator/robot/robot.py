@@ -135,7 +135,7 @@ class Robot:
         return [self.edge_points[0], self.edge_points[1]], [self.edge_points[1], self.edge_points[2]], [self.edge_points[2], self.edge_points[3]], [self.edge_points[3], self.edge_points[0]]
 
     def get_state(self):
-        state = np.zeros((27))
+        state = np.zeros((26))
         # 20 mins ranges in 60 rays of lidar [20]
         lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
         lidar_distances_mins = np.zeros((20))
@@ -149,16 +149,15 @@ class Robot:
         target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1])
         target_point_vector = np.array([target_point_loc[0], target_point_loc[1]])
         # robot orientation [1]
-        robot_orientation = np.tanh(self.theta)
+        robot_orientation = self.theta
         # target orientation [1]
-        target_orientation = np.tanh(self.target[2])
+        target_orientation = self.target[2]
         
         state[0:20] = lidar_distances_mins # normalize from 0-500 to 0-1
         state[20:23] = velocity # in meters per sec
         state[23:25] = target_point_vector / 100 # in meters
         # print('target_point_vector ', target_point_vector)
-        state[25] = robot_orientation # in rad
-        state[26] = target_orientation # in rad
+        state[25] = get_theta_error(target_orientation, robot_orientation) # in rad
         # print(state.shape)
         # print(state)
         self.state = state
@@ -176,9 +175,9 @@ class Robot:
         Xt = np.min(self.state[0:20])
         max_steps = 1000
         # print('Xt= ', Xt)
-        hd = self.state[25] - self.state[24]
+        hd = np.abs(self.state[25])
         Cr = 10.0
-        Cp = 0.02
+        Cp = 0.2
         Cro = 5.0 * self.lidar.ray_lenght
         # print('Dt = ', Dt)
         if Dt < Cd :
@@ -191,13 +190,15 @@ class Robot:
             reward = -300
             terminated = True
         elif Xt < Cop:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd) - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
+            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
         else:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * (1 - hd)
+            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd
 
         self.Dt_l = Dt
         self.Xt_l = Xt
-        # print(reward)
+        # print("reward = ", reward)
+        # print("error = ", hd)
+        # print('robot = ',self.state[25], 'target = ',self.state[26])
         return reward, terminated, truncated
 
 

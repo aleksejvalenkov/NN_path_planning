@@ -38,8 +38,8 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Box(low=-1, high=1,
                                             shape=(3,), dtype=np.float64)
         # Example for using image as input (channel-first; channel-last also works):
-        self.observation_space = spaces.Box(low=-3, high=3,
-                                            shape=(27,), dtype=np.float64)
+        self.observation_space = spaces.Box(low=-5, high=5,
+                                            shape=(26,), dtype=np.float64)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -48,7 +48,8 @@ class CustomEnv(gym.Env):
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.sim_env.step(action)
-        self.render()
+        if self.render_mode is not None:
+            self.render()
         return observation, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
@@ -164,7 +165,8 @@ class Value(DeterministicMixin, Model):
 
 # load and wrap the gymnasium environment.
 
-env = CustomEnv(render_mode="human")
+# env = CustomEnv(render_mode="human")
+env = CustomEnv(render_mode=None)
 
 
 # note: the environment version may change depending on the gymnasium version
@@ -217,7 +219,7 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/robot"
+cfg["experiment"]["directory"] = "runs/torch/robot_fix_reward"
 
 agent = PPO(models=models,
             memory=memory,
@@ -226,10 +228,10 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/robot/25-03-07_22-34-23-484590_PPO/checkpoints/best_agent.pt')
+agent.load('runs/torch/robot_fix_reward/25-03-08_11-00-13-627644_PPO/checkpoints/agent_100000.pt')
 
 # configure and instantiate the RL trainer
-cfg_trainer = {"timesteps": 1000000, "headless": True}
+cfg_trainer = {"timesteps": 200000, "headless": True}
 trainer = SequentialTrainer(cfg=cfg_trainer, env=env, agents=[agent])
 
 # start training
