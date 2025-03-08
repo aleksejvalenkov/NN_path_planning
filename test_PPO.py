@@ -94,19 +94,33 @@ class Policy(GaussianMixin, Model):
         state_dim = int(self.num_observations)
         res1_out_dim = state_dim
         res2_out_dim = state_dim * 2
+        res3_out_dim = res2_out_dim * 2
+        res4_out_dim = res3_out_dim * 2
         conc1_dim = state_dim + res1_out_dim
+        conc2_dim = state_dim + res1_out_dim + res2_out_dim
+        conc3_dim = state_dim + res1_out_dim + res2_out_dim + res3_out_dim
 
         self.res_block1 = ResidualBlock(
             input_dim=state_dim,
-            hidden_dim=512,
+            hidden_dim=1024,
             output_dim=res1_out_dim,
         )
         self.res_block2 = ResidualBlock(
             input_dim=conc1_dim,
-            hidden_dim=512,
+            hidden_dim=1024,
             output_dim=res2_out_dim,
         )
-        self.fc = nn.Linear(res2_out_dim + conc1_dim, int(self.num_actions))
+        self.res_block3 = ResidualBlock(
+            input_dim=conc2_dim,
+            hidden_dim=1024,
+            output_dim=res3_out_dim,
+        )
+        self.res_block4 = ResidualBlock(
+            input_dim=conc3_dim,
+            hidden_dim=1024,
+            output_dim=res4_out_dim,
+        )
+        self.fc = nn.Linear(res4_out_dim + conc3_dim, int(self.num_actions))
         # torch.nn.init.xavier_uniform_(self.fc.weight)
         self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
@@ -114,13 +128,21 @@ class Policy(GaussianMixin, Model):
         state = inputs["states"]
         x = self.res_block1(state)
         x = torch.cat([x, state], dim=-1)
-
         concat1 = x
 
         x = self.res_block2(x)
-        concat2 = torch.cat([x, concat1], dim=-1)
+        x = torch.cat([x, concat1], dim=-1)
+        concat2 = x
 
-        output = F.tanh(self.fc(concat2))
+        x = self.res_block3(x)
+        x = torch.cat([x, concat2], dim=-1)
+        concat3 = x
+
+        x = self.res_block4(x)
+        x = torch.cat([x, concat3], dim=-1)
+        concat4 = x
+
+        output = F.tanh(self.fc(concat4))
 
         return output, self.log_std_parameter, {}
 
@@ -133,32 +155,54 @@ class Value(DeterministicMixin, Model):
         state_dim = int(self.num_observations)
         res1_out_dim = state_dim
         res2_out_dim = state_dim * 2
+        res3_out_dim = res2_out_dim * 2
+        res4_out_dim = res3_out_dim * 2
         conc1_dim = state_dim + res1_out_dim
+        conc2_dim = state_dim + res1_out_dim + res2_out_dim
+        conc3_dim = state_dim + res1_out_dim + res2_out_dim + res3_out_dim
 
         self.res_block1 = ResidualBlock(
             input_dim=state_dim,
-            hidden_dim=512,
+            hidden_dim=1024,
             output_dim=res1_out_dim,
         )
         self.res_block2 = ResidualBlock(
             input_dim=conc1_dim,
-            hidden_dim=512,
+            hidden_dim=1024,
             output_dim=res2_out_dim,
         )
-        self.fc = nn.Linear(res2_out_dim + conc1_dim, int(1))
+        self.res_block3 = ResidualBlock(
+            input_dim=conc2_dim,
+            hidden_dim=1024,
+            output_dim=res3_out_dim,
+        )
+        self.res_block4 = ResidualBlock(
+            input_dim=conc3_dim,
+            hidden_dim=1024,
+            output_dim=res4_out_dim,
+        )
+        self.fc = nn.Linear(res4_out_dim + conc3_dim, int(1))
         # torch.nn.init.xavier_uniform_(self.fc.weight)
 
     def compute(self, inputs, role):
         state = inputs["states"]
         x = self.res_block1(state)
         x = torch.cat([x, state], dim=-1)
-
         concat1 = x
 
         x = self.res_block2(x)
-        concat2 = torch.cat([x, concat1], dim=-1)
+        x = torch.cat([x, concat1], dim=-1)
+        concat2 = x
 
-        output = F.tanh(self.fc(concat2))
+        x = self.res_block3(x)
+        x = torch.cat([x, concat2], dim=-1)
+        concat3 = x
+
+        x = self.res_block4(x)
+        x = torch.cat([x, concat3], dim=-1)
+        concat4 = x
+
+        output = self.fc(concat4)
 
         return output, {}
 
@@ -219,7 +263,7 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = "auto"
-cfg["experiment"]["directory"] = "runs/torch/robot_fix_reward"
+cfg["experiment"]["directory"] = "runs/torch/robot_fix_reward_big_model"
 
 agent = PPO(models=models,
             memory=memory,
@@ -228,7 +272,7 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-agent.load('runs/torch/robot_fix_reward/25-03-08_13-08-47-017780_PPO/checkpoints/agent_50000.pt')
+# agent.load('runs/torch/robot_fix_reward/25-03-08_16-00-22-328307_PPO/checkpoints/best_agent.pt')
 
 # configure and instantiate the RL trainer
 cfg_trainer = {"timesteps": 1000000, "headless": True}

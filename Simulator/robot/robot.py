@@ -166,20 +166,20 @@ class Robot:
         reward = 0
         terminated = False
         truncated = False
-        max_revard = 1000
-        Cd = 5
+        max_revard = 2000
+        Cd = 7
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         Co = 30/self.lidar.ray_lenght
-        Cop = 100/self.lidar.ray_lenght
+        Cop = 50/self.lidar.ray_lenght
         Xt = np.min(self.state[0:20])
-        max_steps = 1000
+        max_steps = 1500
         # print('Xt= ', Xt)
         hd = np.abs(self.state[25])
         Cr = 10.0
-        Cp = 2
+        Cp = 0.25
         Cro = 5.0 * self.lidar.ray_lenght
         # print('Dt = ', Dt)
-        if Dt < Cd :
+        if Dt < Cd and hd < 0.4:
             reward = max_revard
             truncated = True
         elif self.collision[0]: # Xt < Co or
