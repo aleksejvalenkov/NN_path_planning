@@ -263,7 +263,7 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = "auto"
-cfg["experiment"]["directory"] = "runs/torch/robot_fix_reward_big_model"
+cfg["experiment"]["directory"] = "runs/torch/robot_fix_reward_big_model_no_angle"
 
 agent = PPO(models=models,
             memory=memory,
@@ -272,13 +272,13 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/robot_fix_reward/25-03-08_16-00-22-328307_PPO/checkpoints/best_agent.pt')
+# agent.load('runs/torch/robot_fix_reward_big_model/25-03-08_23-17-58-817196_PPO/checkpoints/best_agent.pt')
 
 # configure and instantiate the RL trainer
 cfg_trainer = {"timesteps": 1000000, "headless": True}
 trainer = SequentialTrainer(cfg=cfg_trainer, env=env, agents=[agent])
 
 # start training
-trainer.train()
+# trainer.train()
 
-# trainer.eval()
+trainer.eval()

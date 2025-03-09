@@ -180,7 +180,8 @@ class Robot:
         Cro = 5.0 * self.lidar.ray_lenght
         # print('Dt = ', Dt)
         if Dt < Cd and hd < 0.4:
-            reward = max_revard
+
+            reward = max_revard * (1 - (self.n_steps / max_steps))
             truncated = True
         elif self.collision[0]: # Xt < Co or
             reward = -1000
