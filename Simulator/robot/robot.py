@@ -167,27 +167,27 @@ class Robot:
         terminated = False
         truncated = False
         max_revard = 2000
-        Cd = 7
+        Cd = 10
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         Co = 30/self.lidar.ray_lenght
-        Cop = 50/self.lidar.ray_lenght
+        Cop = 100/self.lidar.ray_lenght
         Xt = np.min(self.state[0:20])
         max_steps = 1500
         # print('Xt= ', Xt)
         hd = np.abs(self.state[25])
         Cr = 10.0
-        Cp = 0.25
+        Cp = 0.0
         Cro = 5.0 * self.lidar.ray_lenght
         # print('Dt = ', Dt)
-        if Dt < Cd and hd < 0.4:
+        if Dt < Cd:
 
-            reward = max_revard * (1 - (self.n_steps / max_steps))
+            reward = max_revard #* (1 - (self.n_steps / max_steps))
             truncated = True
         elif self.collision[0]: # Xt < Co or
             reward = -1000
             terminated = True
         elif self.n_steps > max_steps:
-            reward = -300
+            reward = -500
             terminated = True
         elif Xt < Cop:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
@@ -213,7 +213,7 @@ class Robot:
             # move_vec = action 
         else:
             move_vec = np.zeros((3))
-            move_vec[0] = constrain(action[0], -self.max_vx, self.max_vx)
+            move_vec[0] = constrain(action[0], -self.max_vx/2, self.max_vx)
             move_vec[1] = constrain(action[1], -self.max_vy, self.max_vy)
             move_vec[2] = constrain(action[2], -self.max_w,  self.max_w)
         
@@ -325,7 +325,7 @@ class Robot:
 
         # draw trajectory
         for i in range(1,len(self.trajectory)):
-            self.trajectory[i]
+            # self.trajectory[i]
             pg.draw.aaline(screen, robot_color, self.trajectory[i-1], self.trajectory[i])
 
 
@@ -335,7 +335,7 @@ class Robot:
         if self.DRAW_TARGET:
             target_arrow = [self.target[0] + 25 * np.cos(self.target[2]), self.target[1] + 25 * np.sin(self.target[2])]
             pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 7, 3)
-            pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
+            # pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
         
 
         

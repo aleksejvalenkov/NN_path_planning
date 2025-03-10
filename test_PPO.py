@@ -226,7 +226,7 @@ device = env.device
 print(device)
 
 # instantiate a memory as rollout buffer (any memory can be used for this)
-memory = RandomMemory(memory_size=2048, device=device)
+memory = RandomMemory(memory_size=4096, device=device)
 
 
 # instantiate the agent's models (function approximators).
@@ -240,7 +240,7 @@ models["value"] = Value(env.observation_space, env.action_space, device)
 # configure and instantiate the agent (visit its documentation to see all the options)
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#configuration-and-hyperparameters
 cfg = PPO_DEFAULT_CONFIG.copy()
-cfg["rollouts"] = 2048  # memory_size
+cfg["rollouts"] = 4096  # memory_size
 cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
 cfg["discount_factor"] = 0.9
@@ -272,10 +272,10 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/robot_fix_reward_big_model/25-03-08_23-17-58-817196_PPO/checkpoints/best_agent.pt')
+agent.load('runs/torch/robot_fix_reward_big_model_no_angle/25-03-09_13-37-10-562699_PPO/checkpoints/best_agent.pt')
 
 # configure and instantiate the RL trainer
-cfg_trainer = {"timesteps": 1000000, "headless": True}
+cfg_trainer = {"timesteps": 100000, "headless": True}
 trainer = SequentialTrainer(cfg=cfg_trainer, env=env, agents=[agent])
 
 # start training
