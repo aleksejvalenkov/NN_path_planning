@@ -10,6 +10,7 @@ from utils.transforms import *
 from gui.palette import *
 from environment.collision import *
 
+METRIC_KF = 100 # 1m = 100px
 
 class Obstacle:
     def __init__(self, init_pos=[200,200, 1], init_size=[240, 30]) -> None:
@@ -108,14 +109,15 @@ class MoveableObstacle:
         self.state_1_counter = 0
         
 
-    def update(self, obstacles):
+    def update(self, obstacles, render_fps):
+        self.render_fps = render_fps
         if self.state == 0:
-            self.teleop(teleop_vec=[0.1,0,0])
+            self.teleop(teleop_vec=[0.3,0,0])
         if self.state == 1:
-            self.teleop(teleop_vec=[-0.05,0,0.157])
+            self.teleop(teleop_vec=[-0.1,0,1])
             self.state_1_counter += 1
 
-        if self.state_1_counter > 10:
+        if self.state_1_counter > 20:
             self.state = 0
             self.state_1_counter = 0
 
@@ -177,8 +179,14 @@ class MoveableObstacle:
         
             
         # print(move_vector)
+        if self.render_fps > 0:
+            move_vector = move_vector * METRIC_KF / self.render_fps
+            W = teleop_vec[2] / self.render_fps
+        else:
+            move_vector = np.zeros(2)
+            W = 0
 
-        teleop_transform =  get_transform(move_vector * scale, teleop_vec[2])
+        teleop_transform =  get_transform(move_vector, W)
         self.transform = self.transform @ teleop_transform
         
         # print(get_XYTheta(self.transform))

@@ -106,11 +106,12 @@ class Map:
         surface = pg.Surface(self.size)
         for obstacle in self.obstacles:
             obstacle.draw(surface, color = (255,255,255))
-        pg.image.save(surface, "map.jpg")
+        # pg.image.save(surface, "map.jpg")
 
         map = cv2.imread("map.jpg")
+        # print(map)
         gray_map = cv2.cvtColor(map, cv2.COLOR_BGR2GRAY)
-        kernel = np.ones((100,100),np.float32)/25
+        kernel = np.ones((blur,blur),np.float32)/25
         gray_map_blur = cv2.filter2D(gray_map,-1,kernel)
         gray_map_bin_ext = np.where(gray_map_blur > 127, 1, 0)
         gray_map_bin = np.where(gray_map > 127, 1, 0)
@@ -118,10 +119,10 @@ class Map:
         # cv2.imwrite("map_bin.jpg", gray_map_bin*255)
         return gray_map_bin, gray_map_bin_ext
 
-    def update(self):
+    def update(self, render_fps):
         # self.path = solve(self.resized_map, (0 , 0), (10 , 10))
         for obstacle in self.moveable_obstacles:
-            obstacle.update(self.obstacles)
+            obstacle.update(self.obstacles, render_fps)
 
 
     def draw(self, screen):

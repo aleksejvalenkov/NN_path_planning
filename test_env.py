@@ -1,6 +1,6 @@
 from Simulator.gui.sim import Simulator
 
-env = Simulator()
+env = Simulator(render_fps=30)
 env.init_window()
 env.reset()
 while True:

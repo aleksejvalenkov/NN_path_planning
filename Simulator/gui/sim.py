@@ -36,9 +36,9 @@ class Action:
         return randint(0,5)
 
 class Simulator:
-    def __init__(self):
+    def __init__(self, render_fps=30):
         
-        self.FPS = 1000
+        self.FPS = render_fps
 
         self.WINDOW_SIZE = (800, 800)
         self.target = [self.WINDOW_SIZE[0]//2, self.WINDOW_SIZE[1]//2, 0.0]
@@ -71,6 +71,7 @@ class Simulator:
         self.reset()
         # self.t_old = time.time()
         # fps = time.time() - self.t_old
+        self.init_window()
         
 
     def init_window(self):
@@ -200,7 +201,7 @@ class Simulator:
 
             keys = pg.key.get_pressed()
             if keys[pg.K_w]:
-                self.robot.controll([1, 0, 0], False)
+                self.robot.controll([1, 0, 0], False) # In m/s, m/s, rad/s
             if keys[pg.K_s]:
                 self.robot.controll([-1, 0, 0], False)
             if keys[pg.K_a]:
@@ -208,13 +209,13 @@ class Simulator:
             if keys[pg.K_d]:
                 self.robot.controll([0, 1, 0], False)
             if keys[pg.K_q]:
-                self.robot.controll([0.5, 0, -0.15], False)
+                self.robot.controll([0.5, 0, -1], False)
             if keys[pg.K_e]:
-                self.robot.controll([0.5, 0, 0.15], False)
+                self.robot.controll([0.5, 0, 1], False)
 
 
-            self.map.update()
-            self.robot.update(self.map)
+            self.map.update(render_fps=self.clock.get_fps())
+            self.robot.update(map=self.map, render_fps=self.clock.get_fps())
             # for robot in self.robots:
             #     robot.update(self.map)
 
@@ -239,13 +240,15 @@ class Simulator:
             #         self.old_robots[i].draw(self.screen)
 
             x,y,theta = self.robot.get_pose()
+            Vx, Vy, W = self.robot.get_vel()
             text = self.font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
             self.screen.blit(text, [30,10])
-            text = self.font.render(f'Steps: {self.robot.n_steps}' , True, black)
+            text = self.font.render(f'Robot coordinates: Vx = {Vx:.2f}, Vy = {Vy:.2f}, W = {W:.2f}' , True, black)
             self.screen.blit(text, [30,35])
-            text = self.font.render(f'FPS: {self.clock.get_fps()}' , True, black)
-            # text = self.font.render(f'FPS: {150.710801124572754}' , True, black)
+            text = self.font.render(f'Steps: {self.robot.n_steps}, Sec: {self.robot.live_secs:.2f} ' , True, black)
             self.screen.blit(text, [30,65])
+            text = self.font.render(f'FPS: {self.clock.get_fps():.2f}' , True, black)
+            self.screen.blit(text, [30,95])
 
             # print(self.clock.get_fps())
 

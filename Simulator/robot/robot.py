@@ -2,6 +2,7 @@ import pygame as pg
 import numpy as np
 import sys
 import os
+import time
 
 from planning.A_star import solve
 from simple_pid import PID
@@ -14,19 +15,18 @@ from robot.sensors import *
 from gui.palette import *
 from environment.collision import *
 
+METRIC_KF = 100 # 1m = 100px
 
 class Robot:
     def __init__(self, map, init_pos) -> None:
-
         self.length_m = 0.51 # In meter 
         self.width_m = 0.32 # In meter
-        self.length_wheel = 0.51
-        self.width_wheel = 0.32
-        self.wheel_radius = 0.1
+        self.length_wheel = 0.51 # In meter 
+        self.width_wheel = 0.32 # In meter 
+        self.wheel_radius = 0.1 # In meter 
         self.length_px = self.length_m * 100 # In pixels
         self.width_px = self.width_m * 100 # In pixels
-        self.wheel_eps = 0.1
-        self.max_wheel_vel = 10/2
+        self.render_fps = 0
         self.joit_vec_ust = np.zeros((4))
         self.joit_ang_vel = np.zeros((4))
 
@@ -42,14 +42,23 @@ class Robot:
         self.action_ves = {0:[0, 0, 0], 1:[0, 0,ang], 2:[lin, 0,ang], 3:[lin, 0,0], 4:[lin, 0,-ang], 5:[0, 0,-ang]}
         self.edge_points = [[],[],[],[]]
         self.n_steps = 0
+        self.live_secs_start = time.time()
+        self.live_secs = time.time() - self.live_secs_start
 
         self.robot_radius = 10
-        self.Vx = 0
-        self.Vy = 0
-        self.W = 0
+        self.Vx = 0 # In m/s
+        self.Vy = 0 # In m/s 
+        self.W = 0 # In rad/s
+        self.max_vx = 1.0 # In m/s
+        self.max_vy = 0.6 # In m/s
+        self.max_w = 1.0 # In rad/s
+        self.wheel_eps = 30 # angular acceleration for the wheel In 
+        self.max_wheel_vel = 20
+
         self.target = init_pos
 
         self.map = map
+        
         
         self.t_vec = np.array([self.x , self.y])
         self.transform = get_transform(self.t_vec, self.theta)
@@ -80,15 +89,16 @@ class Robot:
         self.trajectory = [np.array(self.get_pose())[0:2]]
 
         self.state = np.zeros((16))
-        self.update(self.map)
+        self.update(self.map, render_fps=0)
         self.get_state()
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         self.Xt_l = np.min(self.state[0:10])
         
 
 
-    def update(self, map):
-
+    def update(self, map, render_fps):
+        self.render_fps = render_fps
+        self.live_secs = time.time() - self.live_secs_start
         self.integrate_ang_vel(self.joit_vec_ust)
         move_vec_real = self.joit_vec_to_move_vec(self.joit_ang_vel)
         # print('move_vec_real =', move_vec_real)
@@ -112,10 +122,7 @@ class Robot:
         lidar_transform = self.transform @ self.lidar_transform
         self.lidar.update(lidar_transform)
         self.lidar_points, self.lidar_distances = self.lidar.scan(obstacles_lines)
-        self.robot_pose_on_map = (int(self.x//10), int(self.y//10))
 
-        if self.auto_mode:
-            self.controll(self.action)
         
     def set_target(self, target):
         self.target = target
@@ -154,7 +161,7 @@ class Robot:
         
         state[0:20] = lidar_distances_mins # normalize from 0-500 to 0-1
         state[20:23] = velocity # in meters per sec
-        state[23:25] = target_point_vector / 100 # in meters
+        state[23:25] = target_point_vector / METRIC_KF # in meters
         # print('target_point_vector ', target_point_vector)
         state[25] = get_theta_error(target_orientation, robot_orientation) # in rad
         # print(state.shape)
@@ -163,34 +170,38 @@ class Robot:
         return np.array(state)
     
     def get_reward(self):
+        def positive(val):
+            if val > 0:
+                return val
+            else:
+                return 0
         reward = 0
         terminated = False
         truncated = False
         max_revard = 2000
         Cd = 10
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
-        Co = 30/self.lidar.ray_lenght
-        Cop = 100/self.lidar.ray_lenght
+        Co = 0.3/self.lidar.ray_lenght
+        Cop = 0.5/self.lidar.ray_lenght # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.state[0:20])
-        max_steps = 1500
+        max_live_time = 20
         # print('Xt= ', Xt)
         hd = np.abs(self.state[25])
-        Cr = 10.0
+        Cr = 0.0
         Cp = 0.0
-        Cro = 5.0 * self.lidar.ray_lenght
+        Cro = 5.0 * self.lidar.ray_lenght * METRIC_KF
         # print('Dt = ', Dt)
         if Dt < Cd:
-
-            reward = max_revard #* (1 - (self.n_steps / max_steps))
+            reward = 3000 #* (1 - (self.n_steps / max_steps))
             truncated = True
         elif self.collision[0]: # Xt < Co or
+            reward = -3000
+            terminated = True
+        elif self.live_secs > max_live_time:
             reward = -1000
             terminated = True
-        elif self.n_steps > max_steps:
-            reward = -500
-            terminated = True
         elif Xt < Cop:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
+            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * positive((self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt)))
         else:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd
 
@@ -204,9 +215,6 @@ class Robot:
 
     def controll(self, action, from_action_dict=True):
         # print("action = ", action)
-        self.max_vx = 0.2
-        self.max_vy = 0.05
-        self.max_w = 0.05
         action = np.array(action)
         if from_action_dict:
             move_vec = self.action_ves.get(np.argmax(action))
@@ -223,21 +231,22 @@ class Robot:
         
     
     def integrate_ang_vel(self, joit_vec_ust):
+        if self.render_fps > 0:
+            err = joit_vec_ust - self.joit_ang_vel 
+            filter = np.zeros((4))
+            for i in range(len(filter)):
+                if err[i] > 0.1:
+                    filter[i] = 1
+                elif err[i] < -0.1:
+                    filter[i] = -1
+                else:
+                    filter[i] = 0.0
 
-        err = joit_vec_ust - self.joit_ang_vel 
-        filter = np.zeros((4))
-        for i in range(len(filter)):
-            if err[i] > 0.001:
-                filter[i] = 1
-            elif err[i] < -0.001:
-                filter[i] = -1
-            else:
-                filter[i] = 0.0
-
-
-        # print('filter =', filter)
-        wheel_eps_vec = np.array([self.wheel_eps, self.wheel_eps, self.wheel_eps, self.wheel_eps])
-        self.joit_ang_vel += (filter * wheel_eps_vec)
+            # print('filter =', filter)
+            wheel_eps_vec = np.array([self.wheel_eps, self.wheel_eps, self.wheel_eps, self.wheel_eps])
+            self.joit_ang_vel += (filter * wheel_eps_vec/self.render_fps)
+        else:
+            self.joit_ang_vel = np.zeros((4))
 
 
     def move_vec_to_joit_vec(self, move_vec):
@@ -277,6 +286,7 @@ class Robot:
 
     def teleop(self, teleop_vec):
         scale = 4
+        # print(self.transform)
         self.t_vec = np.array([teleop_vec[0], teleop_vec[1]])
         # Pushing away vector
 
@@ -294,19 +304,20 @@ class Robot:
                 move_vector = self.t_vec - pushing_away_vector
         
             
-        # print(move_vector)
+        if self.render_fps > 0:
+            move_vector = move_vector * METRIC_KF / self.render_fps
+            W = teleop_vec[2] / self.render_fps
+        else:
+            move_vector = np.zeros(2)
+            W = 0
 
-        teleop_transform =  get_transform(move_vector * scale, teleop_vec[2])
+        teleop_transform =  get_transform(move_vector , W)
         self.transform = self.transform @ teleop_transform
-        
         # print(get_XYTheta(self.transform))
         self.x , self.y, self.theta = get_XYTheta(self.transform)
         self.trajectory.append(np.array(self.get_pose())[0:2])
 
     def draw(self, screen, color = robot_color):
-
-        # pg.draw.circle(screen, robot_color, (self.x , self.y), self.robot_radius, 5)
-        # pg.draw.aaline(screen, robot_color, [self.x, self.y], [self.x + np.cos(self.theta) * self.robot_radius , self.y + np.sin(self.theta) * self.robot_radius])
         # Drowing robot borders
         pg.draw.aaline(screen, color, (self.edge_points[0][0], self.edge_points[0][1]), (self.edge_points[1][0], self.edge_points[1][1]))
         pg.draw.aaline(screen, color, (self.edge_points[1][0], self.edge_points[1][1]), (self.edge_points[2][0], self.edge_points[2][1]))
@@ -315,13 +326,6 @@ class Robot:
 
 
         self.lidar.draw(screen)
-
-        # c = self.cell_size
-        # # pg.draw.rect(screen, robot_color, (self.robot_pose_on_map[0]*c, self.robot_pose_on_map[1]*c, c, c))
-        # # Draw path
-        # if self.path is not None:
-        #     for cell in self.path:
-        #         pg.draw.rect(screen, way_color, (cell[0]*c, cell[1]*c , c, c))
 
         # draw trajectory
         for i in range(1,len(self.trajectory)):
@@ -342,6 +346,9 @@ class Robot:
 
     def get_pose(self):
         return self.x , self.y, self.theta
+    
+    def get_vel(self):
+        return self.Vx , self.Vy, self.W
     
     def get_waypoint_in_local(self):
         way_point = np.array(self.way_point) * 10

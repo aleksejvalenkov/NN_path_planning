@@ -88,13 +88,15 @@ def find_collision_rays(rays, obstacles_lines):
         scan_points.append(point)
         scan_dists.append(dist)
 
+        scan_dists_np = np.array(scan_dists)
+
     # T3 = time.time_ns()
 
     # print(f'puck - {(T1-T0) / 10**6} ms')
     # print(f'solve - {(T2-T1) / 10**6} ms')
     # print(f'unpuck - {(T3-T2) / 10**6} ms')
 
-    return scan_points, scan_dists
+    return scan_points, scan_dists_np
 
 
 def get_line_param(edge1, edge2):
