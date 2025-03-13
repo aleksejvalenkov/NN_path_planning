@@ -187,15 +187,15 @@ class Robot:
         max_live_time = 20
         # print('Xt= ', Xt)
         hd = np.abs(self.state[25])
-        Cr = 0.0
-        Cp = 0.0
-        Cro = 5.0 * self.lidar.ray_lenght * METRIC_KF
+        Cr = 10.0
+        Cp = 1.0
+        Cro = 15.0 * self.lidar.ray_lenght * METRIC_KF
         # print('Dt = ', Dt)
         if Dt < Cd:
             reward = 3000 #* (1 - (self.n_steps / max_steps))
             truncated = True
         elif self.collision[0]: # Xt < Co or
-            reward = -3000
+            reward = -10000
             terminated = True
         elif self.live_secs > max_live_time:
             reward = -1000
@@ -339,7 +339,7 @@ class Robot:
         if self.DRAW_TARGET:
             target_arrow = [self.target[0] + 25 * np.cos(self.target[2]), self.target[1] + 25 * np.sin(self.target[2])]
             pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 7, 3)
-            # pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
+            pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
         
 
         

@@ -29,7 +29,7 @@ from Simulator.gui.sim import Simulator
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
-    metadata = {"render_modes": ["human"], "render_fps": 30}
+    metadata = {"render_modes": ["human"], "render_fps": 100}
 
     def __init__(self, render_mode=None):
         super().__init__()
@@ -222,7 +222,7 @@ device = env.device
 print(device)
 
 # instantiate a memory as rollout buffer (any memory can be used for this)
-memory = RandomMemory(memory_size=8000, num_envs=NUM_ENVS, device=device)
+memory = RandomMemory(memory_size=1024, num_envs=NUM_ENVS, device=device)
 
 
 # instantiate the agent's models (function approximators).
@@ -236,7 +236,7 @@ models["value"] = Value(env.observation_space, env.action_space, device)
 # configure and instantiate the agent (visit its documentation to see all the options)
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#configuration-and-hyperparameters
 cfg = PPO_DEFAULT_CONFIG.copy()
-cfg["rollouts"] = 8000  # memory_size
+cfg["rollouts"] = 1024  # memory_size
 cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
 cfg["discount_factor"] = 0.9
@@ -258,8 +258,8 @@ cfg["value_preprocessor"] = RunningStandardScaler
 cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
-cfg["experiment"]["checkpoint_interval"] = "auto"
-cfg["experiment"]["directory"] = "runs/torch/multi_envs_and_fix_reward"
+cfg["experiment"]["checkpoint_interval"] = 50000
+cfg["experiment"]["directory"] = "runs/torch/metric_env_and_fix_reward"
 
 agent = PPO(models=models,
             memory=memory,
@@ -268,11 +268,11 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/robot_fix_reward_big_model_no_angle/25-03-09_13-37-10-562699_PPO/checkpoints/best_agent.pt')
+agent.load('runs/torch/metric_env_and_fix_reward/25-03-12_08-46-41-191896_PPO/checkpoints/agent_1000000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
-cfg_trainer = {"timesteps": 1000000, "headless": True}
+cfg_trainer = {"timesteps": 2000000, "headless": True}
 trainer = SequentialTrainer(env=env, agents=[agent], cfg=cfg_trainer)
 
 # start training
