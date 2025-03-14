@@ -2,7 +2,7 @@ import pygame as pg
 import numpy as np
 import sys
 import os
-from random import randint, random
+import random
 
 import copy
 
@@ -17,7 +17,9 @@ from environment.obstacles import *
 
 
 class Map:
-    def __init__(self, size = (800, 800)) -> None:
+    def __init__(self, size = (800, 800), seed=None) -> None:
+        if seed is not None:
+            random.seed(seed)
         self.obs_param = 200
         self.size = size
         self.scale = 0.1
@@ -86,16 +88,25 @@ class Map:
         self.obstacles.append(obstacle)
 
     def get_obstacles(self):
-        all_obstacles = self.obstacles + self.moveable_obstacles
-        return all_obstacles
+        obstacles = self.obstacles + self.moveable_obstacles
+        return obstacles
+    
+    def get_static_obstacles(self):
+        obstacles = self.obstacles
+        return obstacles
+    
+    def get_moveable_obstacles(self):
+        obstacles = self.moveable_obstacles
+        return obstacles
+
 
     def get_random_pose(self):
         while True:
-            x = randint(0, self.size[0]-1)
-            y = randint(0, self.size[1]-1)
+            x = random.randint(0, self.size[0]-1)
+            y = random.randint(0, self.size[1]-1)
             if not self.bin_map_og[y,x]:
                 break
-        fi = (random()-0.5)*2*np.pi
+        fi = (random.random()-0.5)*2*np.pi
         return x,y,fi
 
     def generate(self):

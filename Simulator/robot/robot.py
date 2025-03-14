@@ -110,14 +110,25 @@ class Robot:
             point = self.transform @ self.edge_points_init[i].T
             self.edge_points[i] = [point[0], point[1]]
 
-        obstacles = map.get_obstacles()
+        # obstacles = map.get_obstacles()
+        static_obstacles = map.get_static_obstacles()
+        moveable_obstacles = map.get_moveable_obstacles()
+
         obstacles_lines = []
-        for obstacle in obstacles:
+        for obstacle in static_obstacles:
             obstacles_lines.extend(obstacle.get_lines())
+        self.static_collision = find_collision(self.get_lines(), obstacles_lines)
 
-        self.collision = find_collision(self.get_lines(), obstacles_lines)
+        for obstacle in moveable_obstacles:
+            obstacles_lines.extend(obstacle.get_lines())
+        self.moveable_collision = find_collision(self.get_lines(), obstacles_lines)
 
-        # self.cell_size = round(1/map.scale)
+        if self.static_collision[0]:
+            self.collision = self.static_collision
+        
+        if self.moveable_collision[0]:
+            self.collision = self.moveable_collision
+
 
         lidar_transform = self.transform @ self.lidar_transform
         self.lidar.update(lidar_transform)
@@ -170,11 +181,14 @@ class Robot:
         return np.array(state)
     
     def get_reward(self):
+
         def positive(val):
             if val > 0:
                 return val
             else:
                 return 0
+        reason = None
+        obstacle_type = None
         reward = 0
         terminated = False
         truncated = False
@@ -187,30 +201,46 @@ class Robot:
         max_live_time = 20
         # print('Xt= ', Xt)
         hd = np.abs(self.state[25])
-        Cr = 10.0
-        Cp = 1.0
-        Cro = 15.0 * self.lidar.ray_lenght * METRIC_KF
+        Cr = 15.0
+        Cp = 0.0
+        Cro = 5000 
         # print('Dt = ', Dt)
         if Dt < Cd:
-            reward = 3000 #* (1 - (self.n_steps / max_steps))
+            reward = 10000 #* (1 - (self.n_steps / max_steps))
             truncated = True
+            reason = 'Goal reached'
         elif self.collision[0]: # Xt < Co or
             reward = -10000
             terminated = True
+            reason = 'Collision'
         elif self.live_secs > max_live_time:
             reward = -1000
             terminated = True
+            reason = 'Time is out'
         elif Xt < Cop:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * positive((self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt)))
+            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (Cop - Xt)
         else:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd
 
         self.Dt_l = Dt
         self.Xt_l = Xt
         # print("reward = ", reward)
-        # print("error = ", hd)
+        # print("Xt = ", Xt)
         # print('robot = ',self.state[25], 'target = ',self.state[26])
-        return reward, terminated, truncated
+
+        if self.static_collision[0]:
+            obstacle_type = 'static'
+        elif self.moveable_collision[0]:
+            obstacle_type = 'moveable'
+        else:
+            obstacle_type = None
+        
+        info = {
+            'reason': reason,
+            'done_time': self.live_secs,
+            'obstacle_type': obstacle_type
+        }
+        return reward, terminated, truncated, info
 
 
     def controll(self, action, from_action_dict=True):
