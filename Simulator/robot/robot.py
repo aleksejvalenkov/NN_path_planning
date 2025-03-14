@@ -74,7 +74,7 @@ class Robot:
 
         #Init Sensors
         self.lidar_transform = np.array( 
-            [[  1., 0., self.robot_radius ],
+            [[  1., 0., 0. ],
              [  0., 1., 0. ],
              [  0., 0., 1. ]]
              )
@@ -181,7 +181,7 @@ class Robot:
         # print(state.shape)
         # print(state)
         self.state = state
-        return np.array(state)
+        return np.array(state, dtype=np.float32)
     
     def get_reward(self):
 
@@ -198,7 +198,7 @@ class Robot:
         max_revard = 2000
         Cd = 10
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
-        Co = 0.3/self.lidar.ray_lenght
+        Co = 0.35/self.lidar.ray_lenght
         Cop = 0.5/self.lidar.ray_lenght # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.state[0:20])
         max_live_time = 20
@@ -209,19 +209,19 @@ class Robot:
         Cro = 5000 
         # print('Dt = ', Dt)
         if Dt < Cd:
-            reward = 10000 #* (1 - (self.n_steps / max_steps))
+            reward = 3000 #* (1 - (self.n_steps / max_steps))
             truncated = True
             reason = 'Goal reached'
-        elif self.collision[0]: # Xt < Co or
-            reward = -10000
+        elif Xt < Co or self.collision[0]: # Xt < Co or
+            reward = -8000
             terminated = True
             reason = 'Collision'
         elif self.live_secs > max_live_time:
             reward = -1000
             terminated = True
             reason = 'Time is out'
-        elif Xt < Cop:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (Cop - Xt)
+        # elif Xt < Cop:
+        #     reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (Cop - Xt)
         else:
             reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd
 
@@ -372,7 +372,7 @@ class Robot:
         if self.DRAW_TARGET:
             target_arrow = [self.target[0] + 25 * np.cos(self.target[2]), self.target[1] + 25 * np.sin(self.target[2])]
             pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 7, 3)
-            pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
+            # pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
         
 
         

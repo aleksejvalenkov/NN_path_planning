@@ -83,7 +83,7 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-agent.load('runs/torch/metric_env_and_ansiolute_penalty/25-03-14_12-15-10-341140_PPO/checkpoints/agent_350000.pt')
+agent.load('runs/torch/metric_env_and_fix_reward/25-03-12_23-51-27-535903_PPO/checkpoints/agent_850000.pt')
 
 NUM_EPISODES = 100
 goal_reached = 0

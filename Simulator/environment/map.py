@@ -79,7 +79,7 @@ class Map:
 
         self.bin_map, self.bin_map_og = self.init_bool_map()
 
-        for i in range(5):
+        for i in range(10):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose())
             self.moveable_obstacles.append(moveable_obstacle)
 
@@ -127,7 +127,7 @@ class Map:
         gray_map_bin_ext = np.where(gray_map_blur > 127, 1, 0)
         gray_map_bin = np.where(gray_map > 127, 1, 0)
 
-        cv2.imwrite("map_bin.jpg", gray_map_bin*255)
+        cv2.imwrite("map_bin_ext.jpg", gray_map_bin_ext*255)
         return gray_map_bin, gray_map_bin_ext
 
     def update(self, render_fps):

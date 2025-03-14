@@ -109,7 +109,7 @@ class Simulator:
             x = random.randint(0, self.WINDOW_SIZE[0]-1)
             y = random.randint(0, self.WINDOW_SIZE[1]-1)
             distance_robot_target = distance([init_pos[0],init_pos[1]], [x,y])
-            if not self.map.bin_map_og[y,x] and distance_robot_target > 300 and distance_robot_target < 400:
+            if not self.map.bin_map_og[y,x] and distance_robot_target > 100 and distance_robot_target < 300:
                 break
         fi = (random.random()-0.5)*2*np.pi
         self.robot.set_target([x, y, fi])
@@ -215,9 +215,9 @@ class Simulator:
             if keys[pg.K_d]:
                 self.robot.controll([0, 1, 0], False)
             if keys[pg.K_q]:
-                self.robot.controll([0.5, 0, -1], False)
+                self.robot.controll([0, 0, -1], False)
             if keys[pg.K_e]:
-                self.robot.controll([0.5, 0, 1], False)
+                self.robot.controll([0, 0, 1], False)
 
 
             self.map.update(render_fps=self.clock.get_fps())

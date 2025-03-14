@@ -51,7 +51,7 @@ cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
 cfg["discount_factor"] = 0.9
 cfg["lambda"] = 0.95
-cfg["learning_rate"] = 1e-2
+cfg["learning_rate"] = 1e-3
 cfg["learning_rate_scheduler"] = KLAdaptiveRL
 cfg["learning_rate_scheduler_kwargs"] = {"kl_threshold": 0.008}
 cfg["grad_norm_clip"] = 0.5
@@ -69,7 +69,7 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/metric_env_and_ansiolute_penalty"
+cfg["experiment"]["directory"] = "runs/torch/metric_env_and_stock_reward"
 
 agent = PPO(models=models,
             memory=memory,
@@ -78,11 +78,11 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-agent.load('runs/torch/metric_env_and_fix_reward/25-03-12_23-51-27-535903_PPO/checkpoints/agent_850000.pt')
+# agent.load('runs/torch/metric_env_and_fix_reward/25-03-12_23-51-27-535903_PPO/checkpoints/agent_850000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
-cfg_trainer = {"timesteps": 700000, "headless": True}
+cfg_trainer = {"timesteps": 1000000, "headless": True}
 trainer = SequentialTrainer(env=env, agents=[agent], cfg=cfg_trainer)
 
 # start training
