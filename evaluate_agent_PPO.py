@@ -97,7 +97,7 @@ for episode_id in tqdm(range(NUM_EPISODES)):
     observation, info = env.reset()
     while True:
         observation = torch.tensor(observation, dtype=torch.float32, device=device)
-        action = agent.act(observation, timestep=0, timesteps=100)
+        action = agent.act(observation, timestep=0, timesteps=1)
         action_np = action[0].cpu().detach().numpy()
         observation, reward, terminated, truncated, info = env.step(action_np)
         if terminated or truncated:

@@ -114,20 +114,23 @@ class Robot:
         static_obstacles = map.get_static_obstacles()
         moveable_obstacles = map.get_moveable_obstacles()
 
-        obstacles_lines = []
+        static_obstacles_lines = []
         for obstacle in static_obstacles:
-            obstacles_lines.extend(obstacle.get_lines())
-        self.static_collision = find_collision(self.get_lines(), obstacles_lines)
-
+            static_obstacles_lines.extend(obstacle.get_lines())
+        self.static_collision = find_collision(self.get_lines(), static_obstacles_lines)
+        moveable_obstacles_lines = []
         for obstacle in moveable_obstacles:
-            obstacles_lines.extend(obstacle.get_lines())
-        self.moveable_collision = find_collision(self.get_lines(), obstacles_lines)
+            moveable_obstacles_lines.extend(obstacle.get_lines())
+        self.moveable_collision = find_collision(self.get_lines(), moveable_obstacles_lines)
 
-        if self.static_collision[0]:
-            self.collision = self.static_collision
-        
-        if self.moveable_collision[0]:
-            self.collision = self.moveable_collision
+        obstacles_lines = static_obstacles_lines + moveable_obstacles_lines
+        if self.static_collision[0] or self.moveable_collision[0]:
+            if self.static_collision[0]:    
+                self.collision = self.static_collision
+            elif self.moveable_collision[0]:
+                self.collision = self.moveable_collision
+        else:
+            self.collision = False, None, None
 
 
         lidar_transform = self.transform @ self.lidar_transform

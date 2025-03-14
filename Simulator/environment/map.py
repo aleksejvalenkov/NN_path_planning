@@ -127,7 +127,7 @@ class Map:
         gray_map_bin_ext = np.where(gray_map_blur > 127, 1, 0)
         gray_map_bin = np.where(gray_map > 127, 1, 0)
 
-        # cv2.imwrite("map_bin.jpg", gray_map_bin*255)
+        cv2.imwrite("map_bin.jpg", gray_map_bin*255)
         return gray_map_bin, gray_map_bin_ext
 
     def update(self, render_fps):
