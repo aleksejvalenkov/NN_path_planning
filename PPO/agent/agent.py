@@ -58,7 +58,7 @@ class Agent:
             action_space=action_space,
             device=self.device)
         
-        self.agent.load('runs/torch/PPO_with_A_withback_26obs_2acts_safe/25-03-28_15-34-19-071957_PPO/checkpoints/agent_500000.pt')
+        self.agent.load('runs/torch/PPO_with_A_withback_26obs_2acts_withCop/25-03-25_01-19-11-892635_PPO/checkpoints/agent_800000.pt')
         
     def gen_action(self, observation):
         observation = torch.tensor(observation, dtype=torch.float32, device=self.device)

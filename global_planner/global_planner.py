@@ -1,4 +1,5 @@
 from global_planner.a_star import AStar
+from global_planner.a_star_s import AStarPlanner
 import copy
 import cv2 
 import numpy as np
@@ -8,8 +9,8 @@ METRIC_KF = 100 # 1m = 100px
 class GlobalPlanner:
     def __init__(self):
         pass
-        self.occupation_range = 100
-        self.grid_size = 60 # In px
+        self.occupation_range = 60
+        self.grid_size = 30 # In px
         self.bin_map = None
         self.bin_map_occupation = None
         self.bin_map_decomposition = None
@@ -18,6 +19,16 @@ class GlobalPlanner:
 
               
         self.sorver = AStar(self.get_bin_map_decomposition())
+        ox = []
+        oy = []
+        bin_map_decomposition = self.get_bin_map_decomposition()
+        for i, j in np.ndindex(bin_map_decomposition.shape):
+            if bin_map_decomposition[i,j] == 1:
+                ox.append(i)
+                oy.append(j)
+
+        self.sorver_2 = AStarPlanner(ox, oy, 1, 0.01)
+
         
     
     def prepare_map(self):
@@ -59,8 +70,12 @@ class GlobalPlanner:
         start_glolbal = self.convert_to_global_map_coords(start[:2])
         goal_glolbal = self.convert_to_global_map_coords(goal[:2])
         # print('start = ', start_glolbal, 'goal = ', goal_glolbal)
-        path = self.sorver.find_path(start_glolbal, goal_glolbal)
-        path = self.convert_path_to_map_coords(path)
+        # path = self.sorver.find_path(start_glolbal, goal_glolbal)
+        path_x, path_y = self.sorver_2.planning(start_glolbal[0],start_glolbal[1],goal_glolbal[0],goal_glolbal[1])
+        path2 = np.stack((np.array(path_x), np.array(path_y)), axis=-1)
+        path2 = np.flip(path2, 0)
+        # print(path, path2)
+        path = self.convert_path_to_map_coords(path2)
         if path:
             path = np.array(path)
             path = np.hstack((path, np.ones((len(path),1))*goal[2]))

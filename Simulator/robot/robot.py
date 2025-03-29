@@ -294,8 +294,8 @@ class Robot:
 
         if Dt < Cd:
             reward = max_revard #* (1 - (self.n_steps / max_steps))
-            self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
-            # self.way_points = None
+            # self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
+            self.way_points = self.way_points[1:]
             if self.way_points is not None:
                 if len(self.way_points)>0:
                     self.target = self.way_points[0]
@@ -306,7 +306,7 @@ class Robot:
         # print("Xt = ", Xt)
         # print('robot = ',self.state[25], 'target = ',self.state[26])
 
-        reward = normalize(reward, max_penalty, max_revard) - 0.5
+        # reward = normalize(reward, max_penalty, max_revard) - 0.5
         reward = float(reward)
         self.instantaneous_reward = reward
         # print("reward = ",  reward)
