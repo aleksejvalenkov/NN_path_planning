@@ -112,9 +112,11 @@ class MoveableObstacle:
     def update(self, obstacles, render_fps):
         self.render_fps = render_fps
         if self.state == 0:
-            self.teleop(teleop_vec=[0.3,0,0])
+            self.teleop(teleop_vec=[0.08,0,0])
+            # self.teleop(teleop_vec=[0.0,0,0])
         if self.state == 1:
             self.teleop(teleop_vec=[-0.1,0,1])
+            # self.teleop(teleop_vec=[0,0,0])
             self.state_1_counter += 1
 
         if self.state_1_counter > 20:

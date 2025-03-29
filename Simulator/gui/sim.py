@@ -36,26 +36,23 @@ class Action:
         return random.randint(0,5)
 
 class Simulator:
-    def __init__(self, render_fps=30, seed=None):
-        
+    def __init__(self, render_fps=30, **kwargs):
+        self.global_map = None
         self.FPS = render_fps
-        self.seed = seed
+        seed = kwargs["seed"]
         if seed is not None:
             random.seed(seed)
-        self.WINDOW_SIZE = (800, 800)
+        self.WINDOW_SIZE = (1600, 400)
         self.target = [self.WINDOW_SIZE[0]//2, self.WINDOW_SIZE[1]//2, 0.0]
+        if 'robot_init_pos' in kwargs:
+            self.robot_init_pos = kwargs['robot_init_pos']
+        else:
+            self.robot_init_pos = None
 
-        # init objects
-        # self.map = Map(self.WINDOW_SIZE)
-        # self.robot = Robot(self.map, init_pos=[100,100, 1])
-        # self.robot.target = self.target
-
-
-
-        # pg.init()
-        # self.screen = pg.display.set_mode(self.WINDOW_SIZE,RESIZABLE, 32)
-        # self.clock = pg.time.Clock()
-        # self.font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
+        if 'robot_goal_pos' in kwargs:
+            self.robot_goal_pos = kwargs['robot_goal_pos']
+        else:
+            self.robot_goal_pos = None
 
         # Learning parametrs
         self.observation_space = np.zeros((16))
@@ -91,28 +88,36 @@ class Simulator:
     
     def reset(self):
         # init objects
-        self.map = Map(self.WINDOW_SIZE)
+        self.map = Map(size=self.WINDOW_SIZE)
+        self.map.set_global_map(self.global_map)
         moveable_obstacles = self.map.get_moveable_obstacles()
-        while True:
-            x = random.randint(0, self.WINDOW_SIZE[0]-1)
-            y = random.randint(0, self.WINDOW_SIZE[1]-1)
-            distances_robot_obstacle = []
-            for obstacle in moveable_obstacles:
-                distances_robot_obstacle.append(distance([x,y], [obstacle.x, obstacle.y]))
-            if not self.map.bin_map_og[y,x] and min(distances_robot_obstacle) > 100:
-                break
-        fi = (random.random()-0.5)*2*np.pi
-        init_pos = [x, y, fi]
-        self.robot = Robot(self.map, init_pos=init_pos)
+        if self.robot_init_pos is None:
+            while True:
+                x = random.randint(0, self.WINDOW_SIZE[0]-1)
+                y = random.randint(0, self.WINDOW_SIZE[1]-1)
+                distances_robot_obstacle = []
+                for obstacle in moveable_obstacles:
+                    distances_robot_obstacle.append(distance([x,y], [obstacle.x, obstacle.y]))
+                if not self.map.bin_map_og[y,x] and min(distances_robot_obstacle) > 100:
+                    break
+            fi = (random.random()-0.5)*2*np.pi
+            init_pos = [x, y, fi]
+            self.robot = Robot(self.map, init_pos=init_pos)
+        else:
+            self.robot = Robot(self.map, init_pos=self.robot_init_pos)
+            init_pos = self.robot_init_pos
 
-        while True:
-            x = random.randint(0, self.WINDOW_SIZE[0]-1)
-            y = random.randint(0, self.WINDOW_SIZE[1]-1)
-            distance_robot_target = distance([init_pos[0],init_pos[1]], [x,y])
-            if not self.map.bin_map_og[y,x] and distance_robot_target > 100 and distance_robot_target < 300:
-                break
-        fi = (random.random()-0.5)*2*np.pi
-        self.robot.set_target([x, y, fi])
+        if self.robot_goal_pos is None:
+            while True:
+                x = random.randint(0, self.WINDOW_SIZE[0]-1)
+                y = random.randint(0, self.WINDOW_SIZE[1]-1)
+                distance_robot_target = distance([init_pos[0],init_pos[1]], [x,y])
+                if not self.map.bin_map_og[y,x] and distance_robot_target > 100 and distance_robot_target < 400:
+                    break
+            fi = (random.random()-0.5)*2*np.pi
+            self.robot.set_target([x, y, fi])
+        else:
+            self.robot.set_target(self.robot_goal_pos)
 
         # self.old_robots.append(self.robot)
         # self.pygame_iter() # Обновляем состояние среды
@@ -121,8 +126,8 @@ class Simulator:
         info = {}
         return state, info
 
-    def step(self, action):
-        self.robot.controll(action, from_action_dict=False) # Перемещаем робота на одно действие
+    def step(self, action, pid_mode=False):
+        self.robot.controll(action, from_action_dict=False, pid_mode=pid_mode) # Перемещаем робота на одно действие
 
         self.pygame_iter() # Обновляем состояние среды
         next_state = self.robot.get_state()
@@ -140,7 +145,9 @@ class Simulator:
 
     def get_robot_data(self):
         return self.robot.get_pose()
-
+    
+    def set_global_map(self, global_map):
+        self.global_map = global_map
 
     def tkinter_window(self):
         # create root window
@@ -188,8 +195,6 @@ class Simulator:
 
     def pygame_iter(self):
 
-        
-
         # Check events
             for i in pg.event.get():
                 if i.type == QUIT:
@@ -234,6 +239,7 @@ class Simulator:
             self.screen.fill(silver)
 
             self.map.draw(self.screen)
+
         # Update display
 
 
@@ -255,6 +261,9 @@ class Simulator:
             self.screen.blit(text, [30,65])
             text = self.font.render(f'FPS: {self.clock.get_fps():.2f}' , True, black)
             self.screen.blit(text, [30,95])
+            text = self.font.render(f'Instantaneous reward: {self.robot.instantaneous_reward:.16f}' , True, black)
+            self.screen.blit(text, [30,125])
+
 
             # print(self.clock.get_fps())
 

@@ -18,6 +18,7 @@ from environment.obstacles import *
 
 class Map:
     def __init__(self, size = (800, 800), seed=None) -> None:
+        self.global_map = None
         if seed is not None:
             random.seed(seed)
         self.obs_param = 200
@@ -35,12 +36,12 @@ class Map:
         obstacle_t = Obstacle(init_pos=[size[0]//2, border_width//2, 0], init_size=[size[0], border_width])
         obstacle_b = Obstacle(init_pos=[size[0]//2, size[1]-border_width//2, 0], init_size=[size[0], border_width])
 
-        obstacle_0 = Obstacle(init_pos=[200, 330//2+30, 0], init_size=[30, 330])
-        obstacle_1 = Obstacle(init_pos=[200+800//2, 330+30//2, 0], init_size=[800, 30])
-        obstacle_2 = Obstacle(init_pos=[400//2, 530+30//2, 0], init_size=[400, 30])
-        obstacle_3 = Obstacle(init_pos=[400+150+500//2, 530+30//2, 0], init_size=[500, 30])
-        obstacle_4 = Obstacle(init_pos=[400+150+700, 750+30//2, -2.3], init_size=[600, 30])
-        obstacle_5 = Obstacle(init_pos=[1000-30//2, 230//2+30, 0], init_size=[30, 230])
+        obstacle_0 = Obstacle(init_pos=[200, 100, 0], init_size=[30, 200])
+        obstacle_1 = Obstacle(init_pos=[1400, 300, 0], init_size=[30, 200])
+        obstacle_2 = Obstacle(init_pos=[650, 350, 0], init_size=[30, 100])
+        obstacle_3 = Obstacle(init_pos=[600, 220, -0.785], init_size=[30, 200])
+        obstacle_4 = Obstacle(init_pos=[1000, 120, 0.785], init_size=[30, 300])
+        obstacle_5 = Obstacle(init_pos=[1000, 120, -0.785], init_size=[30, 300])
 
         obstacle_box_1 = Obstacle(init_pos=[150, 150, 0], init_size=[80, 80])
         obstacle_box_2 = Obstacle(init_pos=[300, 400, 0], init_size=[80, 80])
@@ -59,18 +60,18 @@ class Map:
         self.add_obstacle(obstacle_t)
         self.add_obstacle(obstacle_b)
 
-        # self.add_obstacle(obstacle_0)
-        # self.add_obstacle(obstacle_1)
-        # self.add_obstacle(obstacle_2)
-        # self.add_obstacle(obstacle_3)
-        # self.add_obstacle(obstacle_4)
-        # self.add_obstacle(obstacle_5)
+        self.add_obstacle(obstacle_0)
+        self.add_obstacle(obstacle_1)
+        self.add_obstacle(obstacle_2)
+        self.add_obstacle(obstacle_3)
+        self.add_obstacle(obstacle_4)
+        self.add_obstacle(obstacle_5)
 
-        self.add_obstacle(obstacle_box_1)
-        self.add_obstacle(obstacle_box_2)
-        self.add_obstacle(obstacle_box_3)
-        self.add_obstacle(obstacle_box_4)
-        self.add_obstacle(obstacle_box_5)
+        # self.add_obstacle(obstacle_box_1)
+        # self.add_obstacle(obstacle_box_2)
+        # self.add_obstacle(obstacle_box_3)
+        # self.add_obstacle(obstacle_box_4)
+        # self.add_obstacle(obstacle_box_5)
         # map.add_obstacle(obstacle_7)
         # map.add_obstacle(obstacle_8)
         # map.add_obstacle(obstacle_9)
@@ -79,7 +80,7 @@ class Map:
 
         self.bin_map, self.bin_map_og = self.init_bool_map()
 
-        for i in range(10):
+        for i in range(5):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose())
             self.moveable_obstacles.append(moveable_obstacle)
 
@@ -112,14 +113,17 @@ class Map:
     def generate(self):
         pass
 
+    def set_global_map(self, global_map):
+        self.global_map = global_map
+
     def init_bool_map(self, blur=100):
         pg.init()
         surface = pg.Surface(self.size)
         for obstacle in self.obstacles:
             obstacle.draw(surface, color = (255,255,255))
-        # pg.image.save(surface, "map.jpg")
+        # pg.image.save(surface, "global_planner/map/map_bin.jpg")
 
-        map = cv2.imread("map.jpg")
+        map = cv2.imread("global_planner/map/map_bin.jpg")
         # print(map)
         gray_map = cv2.cvtColor(map, cv2.COLOR_BGR2GRAY)
         kernel = np.ones((blur,blur),np.float32)/25
@@ -127,7 +131,7 @@ class Map:
         gray_map_bin_ext = np.where(gray_map_blur > 127, 1, 0)
         gray_map_bin = np.where(gray_map > 127, 1, 0)
 
-        cv2.imwrite("map_bin_ext.jpg", gray_map_bin_ext*255)
+        # cv2.imwrite("map_bin_ext.jpg", gray_map_bin_ext*255)
         return gray_map_bin, gray_map_bin_ext
 
     def update(self, render_fps):
@@ -142,6 +146,8 @@ class Map:
 
         for obstacle in self.moveable_obstacles:
             obstacle.draw(screen)
+
+
 
         # surf = pg.surfarray.make_surface(self.map)
         # screen.blit(surf, (0, 0))

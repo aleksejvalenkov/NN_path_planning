@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 
 import gymnasium as gym
@@ -15,38 +16,49 @@ from skrl.trainers.torch import SequentialTrainer
 from skrl.trainers.torch import ParallelTrainer
 from skrl.utils import set_seed
 
-from gym_env import CustomEnv
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(SCRIPT_DIR)
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from skrl_policy import Policy, Value
+
+from PPO.env.gym_env import CustomEnv
+from PPO.agent.PPO_skrl_policy import Actor, Critic
+# from PPO.agent.DDPG_skrl_policy import Actor, Critic
 
 # load and wrap the gymnasium environment.
-NUM_ENVS = 6
+NUM_ENVS = 4
 # custom_env = CustomEnv(render_mode="human")
 # custom_env = CustomEnv(render_mode=None)
 
 gym.register(id="my_v1",entry_point=CustomEnv, vector_entry_point=CustomEnv)
-env = gym.make_vec(id="my_v1", num_envs=NUM_ENVS, vectorization_mode="async")
+env = gym.make_vec(id="my_v1", 
+                   num_envs=NUM_ENVS, 
+                   vectorization_mode="async",
+                   seed=None,
+                   robot_init_pos=None,
+                   robot_goal_pos=None,
+                   )
 
 env = wrap_env(env)
 device = env.device
 print(device)
 
 # instantiate a memory as rollout buffer (any memory can be used for this)
-memory = RandomMemory(memory_size=1024, num_envs=NUM_ENVS, device=device)
+memory = RandomMemory(memory_size=2048, num_envs=NUM_ENVS, device=device)
 
 
 # instantiate the agent's models (function approximators).
 # PPO requires 2 models, visit its documentation for more details
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#models
 models = {}
-models["policy"] = Policy(env.observation_space, env.action_space, device, clip_actions=True)
-models["value"] = Value(env.observation_space, env.action_space, device)
+models["policy"] = Actor(env.observation_space, env.action_space, device, clip_actions=True)
+models["value"] = Critic(env.observation_space, env.action_space, device)
 
 
 # configure and instantiate the agent (visit its documentation to see all the options)
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html#configuration-and-hyperparameters
 cfg = PPO_DEFAULT_CONFIG.copy()
-cfg["rollouts"] = 1024  # memory_size
+cfg["rollouts"] = 2048  # memory_size
 cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
 cfg["discount_factor"] = 0.9
@@ -69,7 +81,8 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 500
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/metric_env_and_stock_reward"
+cfg["experiment"]["directory"] = "runs/torch/PPO_with_A_withback_26obs_2acts_safe"
+
 
 agent = PPO(models=models,
             memory=memory,
@@ -78,14 +91,15 @@ agent = PPO(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/metric_env_and_fix_reward/25-03-12_23-51-27-535903_PPO/checkpoints/agent_850000.pt')
+
+agent.load('runs/torch/PPO_with_A_withback_26obs_2acts_safe/25-03-28_01-09-17-394931_PPO/checkpoints/agent_1500000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
-cfg_trainer = {"timesteps": 1000000, "headless": True}
+cfg_trainer = {"timesteps": 2000000, "headless": True}
 trainer = SequentialTrainer(env=env, agents=[agent], cfg=cfg_trainer)
 
 # start training
-# trainer.train()
+trainer.train()
 
-trainer.eval()
+# trainer.eval()

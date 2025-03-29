@@ -26,6 +26,12 @@ def get_theta_error(theta_1, theta_2):
     mat_err = mat_2 @ mat_1.T
     return get_theta_from_rot_mat(mat_err)
 
+def get_target_angle(robot_point, target_point):
+    b = target_point[0] - robot_point[0]
+    a = target_point[1] - robot_point[1]
+    return np.arctan2(a,b)
+
+
 def get_XYTheta(transform):
     x = transform[0,2]
     y = transform[1,2]

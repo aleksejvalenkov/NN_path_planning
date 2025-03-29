@@ -24,7 +24,7 @@ class ResidualBlock(nn.Module):
 
 
 # define the model
-class Policy(GaussianMixin, Model):
+class Actor(GaussianMixin, Model):
     def __init__(self, observation_space, action_space, device,
                  clip_actions=False, clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum"):
         Model.__init__(self, observation_space, action_space, device)
@@ -81,12 +81,23 @@ class Policy(GaussianMixin, Model):
         x = torch.cat([x, concat3], dim=-1)
         concat4 = x
 
-        output = F.tanh(self.fc(concat4))
+        output = self.fc(concat4)
+        # print('output = ', output.size())
+        # print('output = ', output)
+        if len(state.shape) > 1:
+            output_vx = output[:,:1]
+            output_w = output[:,1:2]
+        else:
+            output_vx = output[:1]
+            output_w = output[1:2]
+        # print('output 1 = ', output[:,:1])
+        # print('output 2 = ', output[:,1:2])
+        output_vec = torch.stack([F.tanh(output_vx), F.tanh(output_w)], dim=-1).reshape(output.size())
+        # print('output = ', output_vec)
+        return output_vec, self.log_std_parameter, {}
 
-        return output, self.log_std_parameter, {}
 
-
-class Value(DeterministicMixin, Model):
+class Critic(DeterministicMixin, Model):
     def __init__(self, observation_space, action_space, device, clip_actions=False):
         Model.__init__(self, observation_space, action_space, device)
         DeterministicMixin.__init__(self, clip_actions)
