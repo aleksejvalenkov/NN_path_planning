@@ -254,8 +254,8 @@ class Robot:
         reward = 0
         terminated = False
         truncated = False
-        max_revard = 1000.0
-        max_penalty = -1000.0
+        max_revard = 100.0
+        max_penalty = -100.0
         Cd = 0.1
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
