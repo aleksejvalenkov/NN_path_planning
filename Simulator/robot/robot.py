@@ -14,8 +14,10 @@ from robot.sensors import *
 from gui.palette import *
 from environment.collision import *
 
-
+from local_planner.RL.polar_local_map import *
 from global_planner.global_planner import GlobalPlanner
+
+import torch.nn.functional as F
 
 METRIC_KF = 100 # 1m = 100px
 
@@ -40,8 +42,9 @@ class Robot:
                                  np.array([+self.length_px/2, +self.width_px/2, 1]),
                                  np.array([+self.length_px/2, -self.width_px/2, 1])]
         lin = 0.5
-        ang = 0.05
-        self.action_ves = {0:[0, 0, 0], 1:[0, 0,ang], 2:[lin, 0,ang], 3:[lin, 0,0], 4:[lin, 0,-ang], 5:[0, 0,-ang]}
+        ang = 0.7
+        # self.action_ves = {0:[0, 0, 0], 1:[0, 0,ang], 2:[lin, 0,ang], 3:[lin, 0,0], 4:[lin, 0,-ang], 5:[0, 0,-ang]}
+        self.action_ves = {0:[0, 0, -ang], 1:[lin, 0, 0], 2:[0, 0, ang], 3:[lin, 0, ang/2], 4:[lin, 0,-ang/2], 5:[0, 0, 0], 6:[0.09, 0, 0]}
         self.edge_points = [[],[],[],[]]
         self.n_steps = 0
         self.live_secs_start = time.time()
@@ -52,7 +55,7 @@ class Robot:
         self.Vy = 0 # In m/s 
         self.W = 0 # In rad/s
         self.max_vx = 1.0 # In m/s
-        self.min_vx = -1.0 # In m/s
+        self.min_vx = 0.0 # In m/s
         self.max_vy = 0.0 # In m/s
         self.min_vy = 0.0 # In m/s
         self.max_w = 1.0 # In rad/s
@@ -112,7 +115,7 @@ class Robot:
         self.update(self.map, render_fps=0)
         self.get_state()
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
-        self.Xt_l = np.min(self.state[0:20])
+        self.Xt_l = np.min(self.lidar_distances_mins)
         
         self.instantaneous_reward = None
 
@@ -167,8 +170,8 @@ class Robot:
         self.goal = goal
         # print('solve A*')
         # print('goal = ', goal)
-        self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
-        # self.way_points = None
+        # self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
+        self.way_points = None
         if self.way_points is not None:
             if len(self.way_points):
                 self.target = self.way_points[0]
@@ -196,22 +199,22 @@ class Robot:
         def normalize(val, min_val, max_val):
             return (val - min_val) / (max_val - min_val)
         
-        state = np.zeros((26))
+        # state = np.zeros((26))
         MAX_VAL = 5
         MIN_VAL = -5
         # 20 mins ranges in 60 rays of lidar [20] range = 0m <-> 5m
         # lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
-        self.lidar_distances_mins = np.zeros((20))
+        self.lidar_distances_mins = np.zeros((10), dtype=np.float32)
         c = len(self.lidar_distances) // len(self.lidar_distances_mins)
         for i in range(len(self.lidar_distances_mins)):
             self.lidar_distances_mins[i] = np.min(self.lidar_distances[i*c:i*c+c])
         ranges = normalize(self.lidar_distances_mins, 0, self.lidar.ray_lenght)
         # Velocity lin, angular [2] range = -1m <-> 1m
-        velocity = np.array([np.tanh(self.Vx), np.tanh(self.W)])
+        velocity = np.array([self.Vx, self.W], dtype=np.float32)
         # velocity = normalize(velocity, -1, 1)
         # Target point vector [2] range = -8m <-> 8m
-        target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1])
-        target_point_vector = np.array([target_point_loc[0], target_point_loc[1]]) / METRIC_KF
+        target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1], dtype=np.float32)
+        target_point_vector = np.array([target_point_loc[0], target_point_loc[1]], dtype=np.float32) / METRIC_KF
         target_point_vector = normalize(target_point_vector, -8, 8)
 
         # target orientation in local [1] # in rad range = -3.14m <-> 3.14m
@@ -223,20 +226,41 @@ class Robot:
         robot_orientation_norm = normalize(robot_orientation, -np.pi, np.pi)
         target_orientation_norm = normalize(target_orientation, -np.pi, np.pi)
         
-        state[0:20] = ranges
-        state[20:22] = velocity # in meters per sec
-        state[22:24] = target_point_vector  # in meters
-        # print('target_point_vector ', target_point_vector)
-        state[24] = robot_orientation_norm # in rad
-        state[25] = target_orientation_norm # in rad
+        state_dict = {
+            'ranges':ranges,
+            'velocity':velocity,
+            'target_point_vector':target_point_vector,
+            'robot_orientation_norm':robot_orientation_norm,
+            'target_orientation_norm':target_orientation_norm,
+            'polar_local_map':None,
+        }
 
+        # state[0:20] = ranges
+        # state[20:22] = velocity # in meters per sec
+        # state[22:24] = target_point_vector  # in meters
+        # # print('target_point_vector ', target_point_vector)
+        # state[24] = robot_orientation_norm # in rad
+        # state[25] = target_orientation_norm # in rad
+        state = np.hstack((ranges, velocity, target_point_vector, robot_orientation_norm, target_orientation_norm))
         # print('robot_orientation = ', robot_orientation)
         # print('target_orientation = ', target_orientation)
         # print(state.shape)
         # print(state[0:20])
         self.state = state
         # print('state = ', state)
-        return np.array(state, dtype=np.float32)
+        info = {}
+        # print(self.target[0:2])
+        # state_image = cortasian_to_polar(image=copy.deepcopy(self.map.bin_map_og_rgb),
+        #                                  robot_center=(self.x, self.y, self.theta),
+        #                                  target=self.target[0:2],
+        #                                  window=(400,400),
+        #                                  draw=False)
+
+        info = {'shape': state.shape}
+        return np.array(state, dtype=np.float32), info
+        # info = {'shape': state_image.shape}
+        # return np.array(state_image, dtype=np.float32).flatten(), info
+    
     
     def get_reward(self):
 
@@ -254,26 +278,47 @@ class Robot:
         reward = 0
         terminated = False
         truncated = False
-        max_revard = 100.0
-        max_penalty = -100.0
-        Cd = 0.1
+        max_revard = 1000.0
+        max_penalty = -1000.0
+        Cd = 0.15
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
         Co = 0.35
         Cop = 0.6 # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.lidar_distances_mins)
         Xo = self.lidar.ray_lenght - np.min(self.lidar_distances_mins)
-        max_live_time = 40
+        max_live_time = 20
         # print('Xt= ', Xt)
         robot_orientation = self.theta
         target_orientation = get_target_angle((self.x, self.y), (self.target[0], self.target[1]))
         err_orientation = get_theta_error(target_orientation, robot_orientation)
         hd = np.abs(err_orientation)
         hd = normalize(hd, 0, np.pi)
-        Cr = 1000.0
-        Cp = 400.0
-        Cro = -1000.0 
+        Cr = 100.0
+        Cp = 40.0
+        Cro = 600.0 
         # print('Dt = ', Dt)
+
+        # Exp 1
+        move_to_goal_reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
+        orient_to_goal_reward = -(Cp * hd)
+        approaching_an_obstacle_reward = -Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
+
+        # Exp 2
+        # if (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) > 0:
+        #     move_to_goal_reward = 0.1
+        # else:
+        #     move_to_goal_reward = -0.2
+
+        # if np.abs(err_orientation) < 0.52:
+        #     orient_to_goal_reward = 0.1
+        # else:
+        #     orient_to_goal_reward = -0.2
+
+        # if Xt < Cop:
+        #     approaching_an_obstacle_reward = -10
+        # else:
+        #     approaching_an_obstacle_reward = 0
 
         if Dg < Cd:
             reward = max_revard #* (1 - (self.n_steps / max_steps))
@@ -284,21 +329,23 @@ class Robot:
             terminated = True
             reason = 'Collision'
         elif self.live_secs > max_live_time:
-            reward = max_penalty / 5
+            reward = max_penalty/4
             truncated = True
             reason = 'Time is out'
-        elif Xt < Cop:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd - Cro * (Xt - Cop) #- Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt))
+        # elif Xt < Cop:
+        #     reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
         else:
-            reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) - Cp * hd
+            reward = move_to_goal_reward + orient_to_goal_reward
+            # reward = orient_to_goal_reward + approaching_an_obstacle_reward
 
         if Dt < Cd:
             reward = max_revard #* (1 - (self.n_steps / max_steps))
             # self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
-            self.way_points = self.way_points[1:]
+
             if self.way_points is not None:
                 if len(self.way_points)>0:
                     self.target = self.way_points[0]
+                    self.way_points = self.way_points[1:]
                 else:
                     self.target = self.goal
 
@@ -328,7 +375,8 @@ class Robot:
         info = {
             'reason': reason,
             'done_time': self.live_secs,
-            'obstacle_type': obstacle_type
+            'obstacle_type': obstacle_type,
+            'Xt': Xt
         }
 
 
@@ -336,26 +384,29 @@ class Robot:
 
 
     def controll(self, action, from_action_dict=True, pid_mode=False):
-
-        if pid_mode:
-            # print('err x = ', f'{self.pid_x.setpoint} - {self.x} = {self.pid_x.setpoint - self.x}')
-            # print('err y = ', f'{self.pid_y.setpoint} - {self.y} = {self.pid_y.setpoint - self.y}')
-            if 0.4/self.lidar.ray_lenght < np.min(self.state[0:20]):
-                action = np.array([self.pid_x(self.x), self.pid_y(self.y), 0])
-            else:
-                action = np.array([0, 0, 0])
-        else:
-            action_2 = np.array(action)
-            action = np.array([action_2[0], 0, action_2[1]])
+        def sigmoid(x):
+            return 1 / (1 + np.exp(-x))
+        # if pid_mode:
+        #     # print('err x = ', f'{self.pid_x.setpoint} - {self.x} = {self.pid_x.setpoint - self.x}')
+        #     # print('err y = ', f'{self.pid_y.setpoint} - {self.y} = {self.pid_y.setpoint - self.y}')
+        #     if 0.4/self.lidar.ray_lenght < np.min(self.state[0:20]):
+        #         action = np.array([self.pid_x(self.x), self.pid_y(self.y), 0])
+        #     else:
+        #         action = np.array([0, 0, 0])
+        # else:
+        #     action_2 = np.array(action)
+        #     action = np.array([action_2[0], 0, action_2[1]])
 
         # print("action = ", action)
         # print('pid_mode = ', pid_mode)
         if from_action_dict:
+            # print(action)
             move_vec = self.action_ves.get(np.argmax(action))
             # move_vec = action 
         else:
             # print(action)
-            move_vec = np.array(action)
+            # move_vec = np.array([sigmoid(action[0]), 0, np.tanh(action[1])])
+            move_vec = np.array([action[0], 0, action[1]])
             # move_vec = np.zeros((3))
             # move_vec[0] = constrain(action[0], -self.max_vx, self.max_vx)
             # move_vec[1] = constrain(action[1], -self.max_vy, self.max_vy)
@@ -382,7 +433,7 @@ class Robot:
             wheel_eps_vec = np.array([self.wheel_eps, self.wheel_eps, self.wheel_eps, self.wheel_eps])
             self.joit_ang_vel += (filter * wheel_eps_vec/self.render_fps)
             for i in range(len(self.joit_ang_vel)):
-                if -0.1 < self.joit_ang_vel[i] < 0.1:
+                if -0.5 < self.joit_ang_vel[i] < 0.5:
                     self.joit_ang_vel[i] = 0
         else:
             self.joit_ang_vel = np.zeros((4))
@@ -447,7 +498,7 @@ class Robot:
                 move_vector = self.t_vec - pushing_away_vector
         
             
-        if self.render_fps > 0:
+        if self.render_fps > 10:
             move_vector = move_vector * METRIC_KF / self.render_fps
             W = teleop_vec[2] / self.render_fps
         else:
@@ -498,8 +549,8 @@ class Robot:
 
         if self.DRAW_TARGET:
             target_arrow = [self.target[0] + 25 * np.cos(self.target[2]), self.target[1] + 25 * np.sin(self.target[2])]
-            pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 7, 3)
-            pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
+            pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 15, 3)
+            # pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
         
 
         

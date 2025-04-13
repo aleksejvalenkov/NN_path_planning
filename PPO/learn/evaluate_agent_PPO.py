@@ -10,7 +10,7 @@ SCRIPT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from PPO.env.gym_env import CustomEnv
-from PPO.agent.agent import Agent
+from PPO.agent.agent import Agent, AgentSafe
 
 # Define the initial and goal position of the robot
 robot_init_pos = [100, 100, 1.57]
@@ -31,6 +31,7 @@ env = gym.make(id="my_v1",
 device = 'cuda:0'
 
 agent = Agent(env.observation_space, env.action_space, device=device)
+agent_safe = AgentSafe(env.observation_space, env.action_space, device=device)
 
 
 
@@ -41,13 +42,26 @@ collision_moveable = 0
 time_is_out = 0
 mean_done_time = 0
 
+model = "fast"
+
 for episode_id in tqdm(range(NUM_EPISODES)):
     # reset the environment and new episode
     observation, info = env.reset()
     while True:
-        action = agent.gen_action(observation)
+        # print("model = ", model)
+        if model == "fast":
+            action = agent.gen_action(observation)
+        elif model == "safe":
+            action = agent_safe.gen_action(observation)
+
         observation, reward, terminated, truncated, info = env.step(action)
-        if terminated:
+
+        # if info['Xt'] < 0.35:
+        #     model = "safe"
+        # else:
+        #     model = "fast"
+
+        if terminated or truncated:
             if info['reason'] == 'Goal reached':
                 goal_reached += 1
                 mean_done_time += info['done_time']
@@ -56,8 +70,8 @@ for episode_id in tqdm(range(NUM_EPISODES)):
                     collision_moveable += 1
                 else:
                     collision_static += 1
-            # elif info['reason'] == 'Time is out':
-            #     time_is_out += 1
+            elif info['reason'] == 'Time is out':
+                time_is_out += 1
             break
 
 collision_count = collision_static + collision_moveable

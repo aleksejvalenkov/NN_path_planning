@@ -21,12 +21,14 @@ class CustomEnv(gym.Env):
                                                 robot_init_pos=kwargs['robot_init_pos'],
                                                 robot_goal_pos=kwargs['robot_goal_pos'])
         
+        observation, info = self.sim_env.reset()
+        print('observation shape = ', info['shape'])
         # Example when using discrete actions:
-        self.action_space = spaces.Box(low=-1, high=1,
+        self.action_space = spaces.Box(low=-6, high=6,
                                             shape=(2,), dtype=np.float32)
         # Example for using image as input (channel-first; channel-last also works):
-        self.observation_space = spaces.Box(low=0, high=1,
-                                            shape=(26,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-1, high=1,
+                                            shape=info['shape'], dtype=np.float32)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -35,6 +37,7 @@ class CustomEnv(gym.Env):
         
 
     def step(self, action):
+        # print("action =", action)
         observation, reward, terminated, truncated, info = self.sim_env.step(action, pid_mode=self.PID_MODE)
         # print(f"pid_mode: {self.PID_MODE}")
         # if self.render_mode is not None:

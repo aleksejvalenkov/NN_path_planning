@@ -32,55 +32,36 @@ class Actor(DeterministicMixin, Model):
         state_dim = int(self.num_observations)
         res1_out_dim = state_dim
         res2_out_dim = state_dim * 2
-        res3_out_dim = res2_out_dim * 2
-        res4_out_dim = res3_out_dim * 2
         conc1_dim = state_dim + res1_out_dim
-        conc2_dim = state_dim + res1_out_dim + res2_out_dim
-        conc3_dim = state_dim + res1_out_dim + res2_out_dim + res3_out_dim
 
         self.res_block1 = ResidualBlock(
             input_dim=state_dim,
-            hidden_dim=1024,
+            hidden_dim=512,
             output_dim=res1_out_dim,
         )
         self.res_block2 = ResidualBlock(
             input_dim=conc1_dim,
-            hidden_dim=1024,
+            hidden_dim=512,
             output_dim=res2_out_dim,
         )
-        self.res_block3 = ResidualBlock(
-            input_dim=conc2_dim,
-            hidden_dim=1024,
-            output_dim=res3_out_dim,
-        )
-        self.res_block4 = ResidualBlock(
-            input_dim=conc3_dim,
-            hidden_dim=1024,
-            output_dim=res4_out_dim,
-        )
-        self.fc = nn.Linear(res4_out_dim + conc3_dim, int(self.num_actions))
+        self.fc = nn.Linear(res2_out_dim + conc1_dim, int(self.num_actions))
+
         # torch.nn.init.xavier_uniform_(self.fc.weight)
         # self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
     def compute(self, inputs, role):
         state = inputs["states"]
+
         x = self.res_block1(state)
         x = torch.cat([x, state], dim=-1)
+
         concat1 = x
 
         x = self.res_block2(x)
-        x = torch.cat([x, concat1], dim=-1)
-        concat2 = x
+        concat2 = torch.cat([x, concat1], dim=-1)
 
-        x = self.res_block3(x)
-        x = torch.cat([x, concat2], dim=-1)
-        concat3 = x
+        output = F.tanh(self.fc(concat2))
 
-        x = self.res_block4(x)
-        x = torch.cat([x, concat3], dim=-1)
-        concat4 = x
-
-        output = F.tanh(self.fc(concat4))
 
         return output, {}
 
@@ -93,53 +74,31 @@ class Critic(DeterministicMixin, Model):
         state_dim = int(self.num_observations)
         res1_out_dim = state_dim
         res2_out_dim = state_dim * 2
-        res3_out_dim = res2_out_dim * 2
-        res4_out_dim = res3_out_dim * 2
         conc1_dim = state_dim + res1_out_dim
-        conc2_dim = state_dim + res1_out_dim + res2_out_dim
-        conc3_dim = state_dim + res1_out_dim + res2_out_dim + res3_out_dim
 
         self.res_block1 = ResidualBlock(
             input_dim=state_dim,
-            hidden_dim=1024,
+            hidden_dim=512,
             output_dim=res1_out_dim,
         )
         self.res_block2 = ResidualBlock(
             input_dim=conc1_dim,
-            hidden_dim=1024,
+            hidden_dim=512,
             output_dim=res2_out_dim,
         )
-        self.res_block3 = ResidualBlock(
-            input_dim=conc2_dim,
-            hidden_dim=1024,
-            output_dim=res3_out_dim,
-        )
-        self.res_block4 = ResidualBlock(
-            input_dim=conc3_dim,
-            hidden_dim=1024,
-            output_dim=res4_out_dim,
-        )
-        self.fc = nn.Linear(res4_out_dim + conc3_dim, int(1))
+        self.fc = nn.Linear(res2_out_dim + conc1_dim, int(1))
         # torch.nn.init.xavier_uniform_(self.fc.weight)
 
     def compute(self, inputs, role):
         state = inputs["states"]
         x = self.res_block1(state)
         x = torch.cat([x, state], dim=-1)
+
         concat1 = x
 
         x = self.res_block2(x)
-        x = torch.cat([x, concat1], dim=-1)
-        concat2 = x
+        concat2 = torch.cat([x, concat1], dim=-1)
 
-        x = self.res_block3(x)
-        x = torch.cat([x, concat2], dim=-1)
-        concat3 = x
-
-        x = self.res_block4(x)
-        x = torch.cat([x, concat3], dim=-1)
-        concat4 = x
-
-        output = self.fc(concat4)
+        output = F.tanh(self.fc(concat2))
 
         return output, {}
