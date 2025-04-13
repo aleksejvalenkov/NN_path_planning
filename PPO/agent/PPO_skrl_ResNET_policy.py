@@ -65,6 +65,8 @@ class Actor(GaussianMixin, Model):
 
     def compute(self, inputs, role):
         state = inputs["states"]
+        # print("state net = ", state)
+
         x = self.res_block1(state)
         x = torch.cat([x, state], dim=-1)
         concat1 = x
@@ -82,6 +84,7 @@ class Actor(GaussianMixin, Model):
         concat4 = x
 
         output = self.fc(concat4)
+
         # print('output = ', output.size())
         # print('output = ', output)
         if len(state.shape) > 1:
@@ -92,9 +95,16 @@ class Actor(GaussianMixin, Model):
             output_w = output[1:2]
         # print('output 1 = ', output[:,:1])
         # print('output 2 = ', output[:,1:2])
-        output_vec = torch.stack([F.tanh(output_vx), F.tanh(output_w)], dim=-1).reshape(output.size())
-        # print('output = ', output_vec)
-        return output_vec, self.log_std_parameter, {}
+        output_vec = torch.stack([F.sigmoid(output_vx), F.tanh(output_w)], dim=-1).reshape(output.size())
+
+        # perturb the mean actions by adding a randomized uniform sample
+        # rpo_alpha = inputs["alpha"]
+        # perturbation = torch.zeros_like(output).uniform_(-rpo_alpha, rpo_alpha)
+        # output += perturbation
+
+
+        # print('output = ', output)
+        return output, self.log_std_parameter, {}
 
 
 class Critic(DeterministicMixin, Model):
@@ -153,5 +163,6 @@ class Critic(DeterministicMixin, Model):
         concat4 = x
 
         output = self.fc(concat4)
+        # print("output value = ", output)
 
         return output, {}

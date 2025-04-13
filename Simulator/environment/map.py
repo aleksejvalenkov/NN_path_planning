@@ -43,7 +43,7 @@ class Map:
         obstacle_4 = Obstacle(init_pos=[1000, 120, 0.785], init_size=[30, 300])
         obstacle_5 = Obstacle(init_pos=[1000, 120, -0.785], init_size=[30, 300])
 
-        obstacle_box_1 = Obstacle(init_pos=[150, 150, 0], init_size=[80, 80])
+        obstacle_box_1 = Obstacle(init_pos=[350, 350, 0], init_size=[30, 30])
         obstacle_box_2 = Obstacle(init_pos=[300, 400, 0], init_size=[80, 80])
         obstacle_box_3 = Obstacle(init_pos=[500, 400, 0], init_size=[80, 80])
         obstacle_box_4 = Obstacle(init_pos=[620, 620, 1], init_size=[200, 50])
@@ -67,7 +67,7 @@ class Map:
         self.add_obstacle(obstacle_4)
         self.add_obstacle(obstacle_5)
 
-        # self.add_obstacle(obstacle_box_1)
+        self.add_obstacle(obstacle_box_1)
         # self.add_obstacle(obstacle_box_2)
         # self.add_obstacle(obstacle_box_3)
         # self.add_obstacle(obstacle_box_4)
@@ -80,7 +80,9 @@ class Map:
 
         self.bin_map, self.bin_map_og = self.init_bool_map()
 
-        for i in range(5):
+        self.bin_map_og_rgb = cv2.imread("global_planner/map/map_bin_ext.jpg")
+
+        for i in range(10):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose())
             self.moveable_obstacles.append(moveable_obstacle)
 

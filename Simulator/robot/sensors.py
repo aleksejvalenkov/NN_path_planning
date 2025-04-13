@@ -16,9 +16,9 @@ METRIC_KF = 100 # 1m = 100px
 
 class Lidar2D:
     def __init__(self, transform) -> None:
-        self.fov = 360 # in degree
+        self.fov = 180 # in degree
         self.fov_rad = np.radians(self.fov) # in radians
-        self.rays = 60 # 1d rays in scan
+        self.rays = 30 # 1d rays in scan
         self.ray_lenght = 5.0 # In m
         self.ray_lenght_px = self.ray_lenght * METRIC_KF # In px
         self.rays_angles = np.arange(start=-self.fov_rad/2, stop=self.fov_rad/2, step=self.fov_rad/self.rays)

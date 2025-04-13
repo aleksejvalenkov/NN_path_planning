@@ -98,7 +98,7 @@ class Simulator:
                 distances_robot_obstacle = []
                 for obstacle in moveable_obstacles:
                     distances_robot_obstacle.append(distance([x,y], [obstacle.x, obstacle.y]))
-                if not self.map.bin_map_og[y,x] and min(distances_robot_obstacle) > 100:
+                if not self.map.bin_map_og[y,x]: #and min(distances_robot_obstacle) > 100:
                     break
             fi = (random.random()-0.5)*2*np.pi
             init_pos = [x, y, fi]
@@ -112,7 +112,7 @@ class Simulator:
                 x = random.randint(0, self.WINDOW_SIZE[0]-1)
                 y = random.randint(0, self.WINDOW_SIZE[1]-1)
                 distance_robot_target = distance([init_pos[0],init_pos[1]], [x,y])
-                if not self.map.bin_map_og[y,x] and distance_robot_target > 100 and distance_robot_target < 400:
+                if not self.map.bin_map_og[y,x] and distance_robot_target > 100 and distance_robot_target < 200:
                     break
             fi = (random.random()-0.5)*2*np.pi
             self.robot.set_target([x, y, fi])
@@ -121,20 +121,19 @@ class Simulator:
 
         # self.old_robots.append(self.robot)
         # self.pygame_iter() # Обновляем состояние среды
-        state = self.robot.get_state()
+        state, info = self.robot.get_state()
 
-        info = {}
         return state, info
 
     def step(self, action, pid_mode=False):
         self.robot.controll(action, from_action_dict=False, pid_mode=pid_mode) # Перемещаем робота на одно действие
 
         self.pygame_iter() # Обновляем состояние среды
-        next_state = self.robot.get_state()
+        next_state, info_s = self.robot.get_state()
         # print(next_state)
-        reward, terminated, truncated, info = self.robot.get_reward()
-
-        return next_state, reward, terminated, truncated, info
+        reward, terminated, truncated, info_r = self.robot.get_reward()
+        info_s.update(info_r)
+        return next_state, reward, terminated, truncated, info_s
 
     def iteration(self):
         # thread_pygame = threading.Thread(target=self.pygame_window, args=())
