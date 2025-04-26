@@ -29,7 +29,7 @@ data/
 *.pdf
 
 # Image & video files
-*.jpg
+# *.jpg
 *.jpeg
 *.png
 *.gif
