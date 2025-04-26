@@ -9,7 +9,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from PPO.env.gym_env import CustomEnv
+from RL.env.gym_env import CustomEnv
 from PPO.agent.agent import Agent, AgentSafe
 
 # Define the initial and goal position of the robot

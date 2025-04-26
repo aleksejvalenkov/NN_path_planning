@@ -21,8 +21,8 @@ SCRIPT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 
-from PPO.env.gym_env import CustomEnv
-from PPO.agent.PPO_skrl_ResNET_policy import Actor, Critic
+from RL.env.gym_env import CustomEnv
+from RL.agent.PPO_skrl_ResNET_policy import Actor, Critic
 # from PPO.agent.PPO_skrl_CNN_policy import Actor, Critic
 # from PPO.agent.DDPG_skrl_policy import Actor, Critic
 

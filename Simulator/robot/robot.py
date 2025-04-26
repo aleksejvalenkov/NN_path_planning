@@ -115,7 +115,7 @@ class Robot:
         self.update(self.map, render_fps=0)
         self.get_state()
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
-        self.Xt_l = np.min(self.lidar_distances_mins)
+        self.Xt_l = np.min(self.lidar_distances)
         
         self.instantaneous_reward = None
 
@@ -204,18 +204,19 @@ class Robot:
         MIN_VAL = -5
         # 20 mins ranges in 60 rays of lidar [20] range = 0m <-> 5m
         # lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
-        self.lidar_distances_mins = np.zeros((10), dtype=np.float32)
-        c = len(self.lidar_distances) // len(self.lidar_distances_mins)
-        for i in range(len(self.lidar_distances_mins)):
-            self.lidar_distances_mins[i] = np.min(self.lidar_distances[i*c:i*c+c])
-        ranges = normalize(self.lidar_distances_mins, 0, self.lidar.ray_lenght)
+        # self.lidar_distances_mins = np.zeros((20), dtype=np.float32)
+        # c = len(self.lidar_distances) // len(self.lidar_distances_mins)
+        # for i in range(len(self.lidar_distances_mins)):
+        #     self.lidar_distances_mins[i] = np.min(self.lidar_distances[i*c:i*c+c])
+        # ranges = normalize(self.lidar_distances_mins, 0, self.lidar.ray_lenght)
+        ranges = np.array(self.lidar_distances)
         # Velocity lin, angular [2] range = -1m <-> 1m
         velocity = np.array([self.Vx, self.W], dtype=np.float32)
         # velocity = normalize(velocity, -1, 1)
         # Target point vector [2] range = -8m <-> 8m
         target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1], dtype=np.float32)
         target_point_vector = np.array([target_point_loc[0], target_point_loc[1]], dtype=np.float32) / METRIC_KF
-        target_point_vector = normalize(target_point_vector, -8, 8)
+        # target_point_vector = normalize(target_point_vector, -8, 8)
 
         # target orientation in local [1] # in rad range = -3.14m <-> 3.14m
         robot_orientation = self.theta
@@ -241,7 +242,8 @@ class Robot:
         # # print('target_point_vector ', target_point_vector)
         # state[24] = robot_orientation_norm # in rad
         # state[25] = target_orientation_norm # in rad
-        state = np.hstack((ranges, velocity, target_point_vector, robot_orientation_norm, target_orientation_norm))
+        # state = np.hstack((ranges, velocity, target_point_vector, robot_orientation_norm, target_orientation_norm))
+        state = np.hstack((ranges, velocity, target_point_vector, robot_orientation, target_orientation))
         # print('robot_orientation = ', robot_orientation)
         # print('target_orientation = ', target_orientation)
         # print(state.shape)
@@ -285,8 +287,8 @@ class Robot:
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
         Co = 0.35
         Cop = 0.6 # in meter mast be < self.lidar.ray_lenght
-        Xt = np.min(self.lidar_distances_mins)
-        Xo = self.lidar.ray_lenght - np.min(self.lidar_distances_mins)
+        Xt = np.min(self.lidar_distances)
+        Xo = self.lidar.ray_lenght - np.min(self.lidar_distances)
         max_live_time = 20
         # print('Xt= ', Xt)
         robot_orientation = self.theta
@@ -295,13 +297,13 @@ class Robot:
         hd = np.abs(err_orientation)
         hd = normalize(hd, 0, np.pi)
         Cr = 100.0
-        Cp = 40.0
-        Cro = 600.0 
+        Cp = 0.5
+        Cro = 0.0 
         # print('Dt = ', Dt)
 
         # Exp 1
-        move_to_goal_reward = Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
-        orient_to_goal_reward = -(Cp * hd)
+        move_to_goal_reward = Cr * (self.Dt_l - Dt) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
+        orient_to_goal_reward = -(Cp * hd) ** 2
         approaching_an_obstacle_reward = -Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
 
         # Exp 2
