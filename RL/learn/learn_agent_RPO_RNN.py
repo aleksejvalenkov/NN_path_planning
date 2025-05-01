@@ -28,7 +28,7 @@ from RL.agent.PPO_skrl_RNN_policy import Actor, Critic
 # from RL.agent.DDPG_skrl_policy import Actor, Critic
 
 # load and wrap the gymnasium environment.
-NUM_ENVS = 4
+NUM_ENVS = 6
 # custom_env = CustomEnv(render_mode="human")
 # custom_env = CustomEnv(render_mode=None)
 
@@ -86,9 +86,9 @@ cfg["state_preprocessor_kwargs"] = {"size": env.observation_space, "device": dev
 cfg["value_preprocessor"] = RunningStandardScaler
 cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
-cfg["experiment"]["write_interval"] = 500
+cfg["experiment"]["write_interval"] = 250
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_base_reward"
+cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_base_reward_angle_focus"
 
 
 agent = RPO(models=models,
@@ -99,11 +99,11 @@ agent = RPO(models=models,
             device=device)
 
 
-# agent.load('runs/torch/RPO_ResNET_base_reward/25-04-25_23-57-28-469812_RPO/checkpoints/best_agent.pt')
+agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/agent_2000000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
-cfg_trainer = {"timesteps": 1000000, "headless": True}
+cfg_trainer = {"timesteps": 5000000, "headless": True}
 trainer = SequentialTrainer(env=env, agents=[agent], cfg=cfg_trainer)
 
 # start training

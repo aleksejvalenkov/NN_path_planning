@@ -61,7 +61,7 @@ class Agent:
             action_space=action_space,
             device=self.device)
         
-        self.agent.load('runs/torch/metric_env_and_fix_reward_and_norm/25-03-15_17-29-52-328350_PPO/checkpoints/agent_1000000.pt')
+        # self.agent.load('runs/torch/metric_env_and_fix_reward_and_norm/25-03-15_17-29-52-328350_PPO/checkpoints/agent_1000000.pt')
         
     def gen_action(self, observation):
         observation = torch.tensor(observation, dtype=torch.float32, device=self.device)

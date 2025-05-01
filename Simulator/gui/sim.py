@@ -98,7 +98,7 @@ class Simulator:
                 distances_robot_obstacle = []
                 for obstacle in moveable_obstacles:
                     distances_robot_obstacle.append(distance([x,y], [obstacle.x, obstacle.y]))
-                if not self.map.bin_map_og[y,x]: #and min(distances_robot_obstacle) > 100:
+                if not self.map.bin_map_og[y,x] and min(distances_robot_obstacle) > 100:
                     break
             fi = (random.random()-0.5)*2*np.pi
             init_pos = [x, y, fi]
@@ -112,7 +112,7 @@ class Simulator:
                 x = random.randint(0, self.WINDOW_SIZE[0]-1)
                 y = random.randint(0, self.WINDOW_SIZE[1]-1)
                 distance_robot_target = distance([init_pos[0],init_pos[1]], [x,y])
-                if not self.map.bin_map_og[y,x] and distance_robot_target > 100 and distance_robot_target < 200:
+                if not self.map.bin_map_og[y,x] and distance_robot_target > 200 and distance_robot_target < 400:
                     break
             fi = (random.random()-0.5)*2*np.pi
             self.robot.set_target([x, y, fi])

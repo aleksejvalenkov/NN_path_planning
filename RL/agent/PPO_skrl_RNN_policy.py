@@ -8,7 +8,7 @@ from skrl.models.torch import DeterministicMixin, GaussianMixin, Model
 class Actor(GaussianMixin, Model):
     def __init__(self, observation_space, action_space, device, clip_actions=False,
                  clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum",
-                 num_envs=1, num_layers=1, hidden_size=128, sequence_length=128):
+                 num_envs=1, num_layers=1, hidden_size=256, sequence_length=128):
         Model.__init__(self, observation_space, action_space, device)
         GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
 
@@ -22,10 +22,12 @@ class Actor(GaussianMixin, Model):
                             num_layers=self.num_layers,
                             batch_first=True)  # batch_first -> (batch, sequence, features)
 
-        self.net = nn.Sequential(nn.Linear(self.hidden_size, 128),
-                                 nn.ReLU(),
+        self.net = nn.Sequential(nn.Linear(self.hidden_size, 256),
+                                 nn.LeakyReLU(),
+                                 nn.Linear(256, 128),
+                                 nn.LeakyReLU(),
                                  nn.Linear(128, 64),
-                                 nn.ReLU(),
+                                 nn.LeakyReLU(),
                                  nn.Linear(64, self.num_actions))
         self.log_std_parameter = nn.Parameter(torch.zeros(self.num_actions))
 
@@ -76,11 +78,11 @@ class Actor(GaussianMixin, Model):
         rnn_output = torch.flatten(rnn_output, start_dim=0, end_dim=1)  # (N, L, D ∗ Hout) -> (N * L, D ∗ Hout)
 
         # Pendulum-v1 action_space is -2 to 2
-        return 2 * torch.tanh(self.net(rnn_output)), self.log_std_parameter, {"rnn": [rnn_states[0], rnn_states[1]]}
+        return torch.tanh(self.net(rnn_output)), self.log_std_parameter, {"rnn": [rnn_states[0], rnn_states[1]]}
 
 class Critic(DeterministicMixin, Model):
     def __init__(self, observation_space, action_space, device, clip_actions=False,
-                 num_envs=1, num_layers=1, hidden_size=64, sequence_length=128):
+                 num_envs=1, num_layers=1, hidden_size=256, sequence_length=128):
         Model.__init__(self, observation_space, action_space, device)
         DeterministicMixin.__init__(self, clip_actions)
 
@@ -94,10 +96,12 @@ class Critic(DeterministicMixin, Model):
                             num_layers=self.num_layers,
                             batch_first=True)  # batch_first -> (batch, sequence, features)
 
-        self.net = nn.Sequential(nn.Linear(self.hidden_size, 128),
-                                 nn.ReLU(),
+        self.net = nn.Sequential(nn.Linear(self.hidden_size, 256),
+                                 nn.LeakyReLU(),
+                                 nn.Linear(256, 128),
+                                 nn.LeakyReLU(),
                                  nn.Linear(128, 64),
-                                 nn.ReLU(),
+                                 nn.LeakyReLU(),
                                  nn.Linear(64, 1))
 
     def get_specification(self):

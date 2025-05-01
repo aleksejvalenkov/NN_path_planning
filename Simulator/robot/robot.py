@@ -55,7 +55,7 @@ class Robot:
         self.Vy = 0 # In m/s 
         self.W = 0 # In rad/s
         self.max_vx = 1.0 # In m/s
-        self.min_vx = 0.0 # In m/s
+        self.min_vx = -0.2 # In m/s
         self.max_vy = 0.0 # In m/s
         self.min_vy = 0.0 # In m/s
         self.max_w = 1.0 # In rad/s
@@ -280,8 +280,8 @@ class Robot:
         reward = 0
         terminated = False
         truncated = False
-        max_revard = 1000.0
-        max_penalty = -1000.0
+        max_revard = 10000.0
+        max_penalty = -10000.0
         Cd = 0.15
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
@@ -289,7 +289,7 @@ class Robot:
         Cop = 0.6 # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.lidar_distances)
         Xo = self.lidar.ray_lenght - np.min(self.lidar_distances)
-        max_live_time = 20
+        max_live_time = 30
         # print('Xt= ', Xt)
         robot_orientation = self.theta
         target_orientation = get_target_angle((self.x, self.y), (self.target[0], self.target[1]))
@@ -297,14 +297,17 @@ class Robot:
         hd = np.abs(err_orientation)
         hd = normalize(hd, 0, np.pi)
         Cr = 100.0
-        Cp = 0.5
-        Cro = 0.0 
+        Cp1 = 0.5
+        Cp2 = 0.001
+
+        Cro = 1000.0
         # print('Dt = ', Dt)
+        max_Dt = 20.0
 
         # Exp 1
-        move_to_goal_reward = Cr * (self.Dt_l - Dt) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
-        orient_to_goal_reward = -(Cp * hd) ** 2
-        approaching_an_obstacle_reward = -Cro * (self.Xt_l - Xt) * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
+        move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
+        orient_to_goal_reward = - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
+        approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xt)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
 
         # Exp 2
         # if (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) > 0:
@@ -331,7 +334,8 @@ class Robot:
             terminated = True
             reason = 'Collision'
         elif self.live_secs > max_live_time:
-            reward = max_penalty/4
+            # reward = max_penalty/4
+            reward = move_to_goal_reward + orient_to_goal_reward
             truncated = True
             reason = 'Time is out'
         # elif Xt < Cop:
