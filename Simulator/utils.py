@@ -41,13 +41,13 @@ class UWBSensor:
         return [self.x, self.y]
 
 class Robot:
-    def __init__(self, s1, s2, s3, x=400, y=400) -> None:
+    def __init__(self, s1, s2, s3, x=300, y=300) -> None:
         self.robot_radius = 25
         self.x = x
         self.y = y
         self.theta = 0
         self.est_robot_pose = [0, 0, 0]
-        self.t_vec = np.array([ self.x , self.y])
+        self.t_vec = np.array([self.x, self.y])
         self.transform = get_transform(self.t_vec, self.theta)
         self.way_point = (500, 500)
 
@@ -56,6 +56,7 @@ class Robot:
         self.robot_tracker.x = np.array([[self.x, 0, self.y, 0]]).T
 
         self.errors = []
+        self.distances = []
 
         self.robot_sensor_1_transform = np.array( 
             [[  1., 0., 0. ],
@@ -102,6 +103,7 @@ class Robot:
         self.pid_theta = PID(0.0001, 0.0, 0, 0)
         self.pid_throttle.sample_time = 0.0001
         self.pid_theta.sample_time = 0.0001
+
 
 
     def update(self):
@@ -177,7 +179,6 @@ class Robot:
         return np.array(pose)
 
     def teleop(self, teleop_vec):
-
         self.t_vec = np.array([ teleop_vec[0] , teleop_vec[1]])
         teleop_transform =  get_transform(self.t_vec, teleop_vec[2])
         self.transform = self.transform @ teleop_transform

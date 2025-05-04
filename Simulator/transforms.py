@@ -32,7 +32,7 @@ def constrain(x, a, b):
     
 def distance_with_noise(p1, p2):
     d = np.sqrt(pow((p1[0] - p2[0]), 2) + pow((p1[1] - p2[1]), 2))
-    d = np.random.normal(loc=d, scale=3, size=None)
+    d = np.random.normal(loc=d, scale=0.5, size=None)
     return abs(d)
 
 def distance(p1, p2):
@@ -42,7 +42,7 @@ def distance(p1, p2):
 def point_form_two_rounds(c1, d1, c2, d2):
     dist = distance(c1, c2)
     if dist > d1 + d2:
-        op = (dist / (d1 + d2)) + 0.1
+        op = (dist / (d1 + d2)) + 0.01
         d1 = d1 * op
         d2 = d2 * op
 
