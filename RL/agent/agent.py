@@ -4,6 +4,7 @@ import numpy as np
 import torch
 # import the skrl components to build the RL system
 from skrl.agents.torch.rpo import RPO, RPO_DEFAULT_CONFIG
+# from skrl.agents.torch.rpo import RPO_RNN as RPO, RPO_DEFAULT_CONFIG
 from skrl.envs.wrappers.torch import wrap_env
 from skrl.memories.torch import RandomMemory
 from skrl.resources.preprocessors.torch import RunningStandardScaler
@@ -14,6 +15,7 @@ SCRIPT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from RL.env.gym_env import CustomEnv
+# from RL.agent.PPO_skrl_RNN_policy import Actor, Critic
 from RL.agent.PPO_skrl_ResNET_policy import Actor, Critic
 # from PPO.agent.PPO_skrl_CNN_policy import Actor, Critic
 
@@ -23,7 +25,7 @@ class Agent:
         self.device = device
         memory = RandomMemory(memory_size=10, device=device)
         models = {}
-        models["policy"] = Actor(observation_space, action_space, device, clip_actions=True)
+        models["policy"] = Actor(observation_space, action_space, device)
         models["value"] = Critic(observation_space, action_space, device)
 
         # configure and instantiate the agent (visit its documentation to see all the options)
@@ -61,7 +63,7 @@ class Agent:
             action_space=action_space,
             device=self.device)
         
-        # self.agent.load('runs/torch/metric_env_and_fix_reward_and_norm/25-03-15_17-29-52-328350_PPO/checkpoints/agent_1000000.pt')
+        # self.agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
         
     def gen_action(self, observation):
         observation = torch.tensor(observation, dtype=torch.float32, device=self.device)
@@ -74,8 +76,8 @@ class AgentSafe:
         self.device = device
         memory = RandomMemory(memory_size=1024, device=device)
         models = {}
-        models["policy"] = Actor(observation_space, action_space, device, clip_actions=True)
-        models["value"] = Critic(observation_space, action_space, device)
+        models["policy"] = Actor(observation_space, action_space, device, num_envs=1)
+        models["value"] = Critic(observation_space, action_space, device, num_envs=1)
 
         # configure and instantiate the agent (visit its documentation to see all the options)
         cfg = RPO_DEFAULT_CONFIG.copy()
@@ -111,7 +113,7 @@ class AgentSafe:
             action_space=action_space,
             device=self.device)
         
-        # self.agent.load('runs/torch/PPO_RESNET_norm_reward_gen3/25-04-10_21-56-45-621410_RPO/checkpoints/agent_1120000.pt')
+        # self.agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
         
     def gen_action(self, observation):
         observation = torch.tensor(observation, dtype=torch.float32, device=self.device)

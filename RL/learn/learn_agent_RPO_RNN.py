@@ -88,7 +88,7 @@ cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 250
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_base_reward_angle_focus"
+cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_safe_reward_angle_focus_2_action"
 
 
 agent = RPO(models=models,
@@ -99,11 +99,11 @@ agent = RPO(models=models,
             device=device)
 
 
-agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/agent_2000000.pt')
+# agent.load('runs/torch/RPO_LSTM_safe_reward_angle_focus_2_action/25-05-02_16-54-38-772086_RPO_RNN/checkpoints/agent_2000000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
-cfg_trainer = {"timesteps": 5000000, "headless": True}
+cfg_trainer = {"timesteps": 2000000, "headless": True}
 trainer = SequentialTrainer(env=env, agents=[agent], cfg=cfg_trainer)
 
 # start training

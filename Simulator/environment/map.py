@@ -82,7 +82,7 @@ class Map:
 
         self.bin_map_og_rgb = cv2.imread("global_planner/map/map_bin_ext.jpg")
 
-        for i in range(5):
+        for i in range(15):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose())
             self.moveable_obstacles.append(moveable_obstacle)
 

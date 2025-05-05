@@ -87,15 +87,15 @@ class Actor(GaussianMixin, Model):
 
         # print('output = ', output.size())
         # print('output = ', output)
-        if len(state.shape) > 1:
-            output_vx = output[:,:1]
-            output_w = output[:,1:2]
-        else:
-            output_vx = output[:1]
-            output_w = output[1:2]
+        # if len(state.shape) > 1:
+        #     output_vx = output[:,:1]
+        #     output_w = output[:,1:2]
+        # else:
+        #     output_vx = output[:1]
+        #     output_w = output[1:2]
         # print('output 1 = ', output[:,:1])
         # print('output 2 = ', output[:,1:2])
-        output_vec = torch.stack([F.sigmoid(output_vx), F.tanh(output_w)], dim=-1).reshape(output.size())
+        # output_vec = torch.stack([F.sigmoid(output_vx), F.tanh(output_w)], dim=-1).reshape(output.size())
 
         # perturb the mean actions by adding a randomized uniform sample
         # rpo_alpha = inputs["alpha"]
@@ -104,7 +104,7 @@ class Actor(GaussianMixin, Model):
 
 
         # print('output = ', output)
-        return output, self.log_std_parameter, {}
+        return  F.tanh(output), self.log_std_parameter, {}
 
 
 class Critic(DeterministicMixin, Model):

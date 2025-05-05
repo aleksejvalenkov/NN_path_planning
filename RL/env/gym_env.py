@@ -27,7 +27,7 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Box(low=-1, high=1,
                                             shape=(2,), dtype=np.float32)
         # Example for using image as input (channel-first; channel-last also works):
-        self.observation_space = spaces.Box(low=-8, high=8,
+        self.observation_space = spaces.Box(low=-10, high=10,
                                             shape=info['shape'], dtype=np.float32)
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]

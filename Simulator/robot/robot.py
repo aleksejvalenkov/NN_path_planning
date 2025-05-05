@@ -56,8 +56,8 @@ class Robot:
         self.W = 0 # In rad/s
         self.max_vx = 1.0 # In m/s
         self.min_vx = -0.2 # In m/s
-        self.max_vy = 0.0 # In m/s
-        self.min_vy = 0.0 # In m/s
+        self.max_vy = 0.2 # In m/s
+        self.min_vy = -0.2 # In m/s
         self.max_w = 1.0 # In rad/s
         self.min_w = -1.0 # In rad/s
         self.wheel_eps = 30 # angular acceleration for the wheel In 
@@ -286,9 +286,9 @@ class Robot:
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
         Co = 0.35
-        Cop = 0.6 # in meter mast be < self.lidar.ray_lenght
+        Cop = 1.2 # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.lidar_distances)
-        Xo = self.lidar.ray_lenght - np.min(self.lidar_distances)
+        Xtn = (Xt - Cop) / self.lidar.ray_lenght 
         max_live_time = 30
         # print('Xt= ', Xt)
         robot_orientation = self.theta
@@ -300,30 +300,19 @@ class Robot:
         Cp1 = 0.5
         Cp2 = 0.001
 
-        Cro = 1000.0
+        Cro = 50.0
         # print('Dt = ', Dt)
         max_Dt = 20.0
 
         # Exp 1
-        move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
-        orient_to_goal_reward = - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
-        approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xt)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
+        # move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
+        # orient_to_goal_reward = - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
+        # approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xt)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
 
         # Exp 2
-        # if (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt)) > 0:
-        #     move_to_goal_reward = 0.1
-        # else:
-        #     move_to_goal_reward = -0.2
-
-        # if np.abs(err_orientation) < 0.52:
-        #     orient_to_goal_reward = 0.1
-        # else:
-        #     orient_to_goal_reward = -0.2
-
-        # if Xt < Cop:
-        #     approaching_an_obstacle_reward = -10
-        # else:
-        #     approaching_an_obstacle_reward = 0
+        move_to_goal_reward = 0#(Cr * (self.Dt_l - Dt)) ** 3
+        orient_to_goal_reward = 0 # - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
+        approaching_an_obstacle_reward = - ((Cro * Xtn) ** 4)
 
         if Dg < Cd:
             reward = max_revard #* (1 - (self.n_steps / max_steps))
@@ -338,8 +327,8 @@ class Robot:
             reward = move_to_goal_reward + orient_to_goal_reward
             truncated = True
             reason = 'Time is out'
-        # elif Xt < Cop:
-        #     reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
+        elif Xt < Cop:
+            reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
         else:
             reward = move_to_goal_reward + orient_to_goal_reward
             # reward = orient_to_goal_reward + approaching_an_obstacle_reward
@@ -555,7 +544,7 @@ class Robot:
 
         if self.DRAW_TARGET:
             target_arrow = [self.target[0] + 25 * np.cos(self.target[2]), self.target[1] + 25 * np.sin(self.target[2])]
-            pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 15, 3)
+            pg.draw.circle(screen, way_color, [self.target[0], self.target[1]], 10, 3)
             # pg.draw.aaline(screen, way_color, (self.target[0], self.target[1]), (target_arrow[0], target_arrow[1]))
         
 
