@@ -77,18 +77,18 @@ cfg["entropy_loss_scale"] = 0.0
 cfg["value_loss_scale"] = 0.5
 cfg["kl_threshold"] = 0
 cfg["mixed_precision"] = True
-# cfg["state_preprocessor"] = None
-# cfg["state_preprocessor_kwargs"] = {}
-# cfg["value_preprocessor"] = None
-# cfg["value_preprocessor_kwargs"] = {}
-cfg["state_preprocessor"] = RunningStandardScaler
-cfg["state_preprocessor_kwargs"] = {"size": env.observation_space, "device": device}
-cfg["value_preprocessor"] = RunningStandardScaler
-cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
+cfg["state_preprocessor"] = None
+cfg["state_preprocessor_kwargs"] = {}
+cfg["value_preprocessor"] = None
+cfg["value_preprocessor_kwargs"] = {}
+# cfg["state_preprocessor"] = RunningStandardScaler
+# cfg["state_preprocessor_kwargs"] = {"size": env.observation_space, "device": device}
+# cfg["value_preprocessor"] = RunningStandardScaler
+# cfg["value_preprocessor_kwargs"] = {"size": 1, "device": device}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 250
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_safe_reward_angle_focus_2_action"
+cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_base_reward_no_preprocessor"
 
 
 agent = RPO(models=models,
@@ -99,7 +99,7 @@ agent = RPO(models=models,
             device=device)
 
 
-# agent.load('runs/torch/RPO_LSTM_safe_reward_angle_focus_2_action/25-05-02_16-54-38-772086_RPO_RNN/checkpoints/agent_2000000.pt')
+# agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer

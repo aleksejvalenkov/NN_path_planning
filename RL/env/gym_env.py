@@ -27,8 +27,13 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Box(low=-1, high=1,
                                             shape=(2,), dtype=np.float32)
         # Example for using image as input (channel-first; channel-last also works):
-        self.observation_space = spaces.Box(low=-10, high=10,
-                                            shape=info['shape'], dtype=np.float32)
+        # self.observation_space = spaces.Box(low=-10, high=10,
+        #                                     shape=info['shape'], dtype=np.float32)
+        
+        self.observation_space = spaces.Dict({
+            "state": spaces.Box(low=-10, high=10, shape=info['shape'], dtype=np.float32),
+            # "state_image": spaces.Box(low=0, high=255, shape=(100, 100, 3), dtype=np.uint8),
+        })
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -39,6 +44,7 @@ class CustomEnv(gym.Env):
     def step(self, action):
         # print("action =", action)
         observation, reward, terminated, truncated, info = self.sim_env.step(action, pid_mode=self.PID_MODE)
+        # print("observation = ", observation)
         # print(f"pid_mode: {self.PID_MODE}")
         # if self.render_mode is not None:
         self.render()

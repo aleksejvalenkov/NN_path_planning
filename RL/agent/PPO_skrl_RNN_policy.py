@@ -8,7 +8,7 @@ from skrl.models.torch import DeterministicMixin, GaussianMixin, Model
 class Actor(GaussianMixin, Model):
     def __init__(self, observation_space, action_space, device, clip_actions=False,
                  clip_log_std=True, min_log_std=-20, max_log_std=2, reduction="sum",
-                 num_envs=1, num_layers=1, hidden_size=256, sequence_length=128):
+                 num_envs=1, num_layers=1, hidden_size=256, sequence_length=64):
         Model.__init__(self, observation_space, action_space, device)
         GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
 
@@ -38,9 +38,12 @@ class Actor(GaussianMixin, Model):
                                   (self.num_layers, self.num_envs, self.hidden_size)]}}  # cell states   (D ∗ num_layers, N, Hcell)
 
     def compute(self, inputs, role):
+        # print("inputs = ", inputs)
         states = inputs["states"]
         terminated = inputs.get("terminated", None)
         hidden_states, cell_states = inputs["rnn"][0], inputs["rnn"][1]
+        # print("hidden_states = ", hidden_states.shape)
+        # print("cell_states = ", cell_states.shape)
 
         # training
         if self.training:
@@ -73,6 +76,7 @@ class Actor(GaussianMixin, Model):
         else:
             rnn_input = states.view(-1, 1, states.shape[-1])  # (N, L, Hin): N=num_envs, L=1
             rnn_output, rnn_states = self.lstm(rnn_input, (hidden_states, cell_states))
+            # print("rnn_input = ", rnn_input.shape)
 
         # flatten the RNN output
         rnn_output = torch.flatten(rnn_output, start_dim=0, end_dim=1)  # (N, L, D ∗ Hout) -> (N * L, D ∗ Hout)
@@ -82,7 +86,7 @@ class Actor(GaussianMixin, Model):
 
 class Critic(DeterministicMixin, Model):
     def __init__(self, observation_space, action_space, device, clip_actions=False,
-                 num_envs=1, num_layers=1, hidden_size=256, sequence_length=128):
+                 num_envs=1, num_layers=1, hidden_size=256, sequence_length=64):
         Model.__init__(self, observation_space, action_space, device)
         DeterministicMixin.__init__(self, clip_actions)
 

@@ -54,7 +54,7 @@ class Robot:
         self.Vx = 0 # In m/s
         self.Vy = 0 # In m/s 
         self.W = 0 # In rad/s
-        self.max_vx = 1.0 # In m/s
+        self.max_vx = 0.5 # In m/s
         self.min_vx = -0.2 # In m/s
         self.max_vy = 0.2 # In m/s
         self.min_vy = -0.2 # In m/s
@@ -236,6 +236,8 @@ class Robot:
             'polar_local_map':None,
         }
 
+
+
         # state[0:20] = ranges
         # state[20:22] = velocity # in meters per sec
         # state[22:24] = target_point_vector  # in meters
@@ -258,8 +260,14 @@ class Robot:
         #                                  window=(400,400),
         #                                  draw=False)
 
+        state_dict = {
+            "state": state,
+            # "state_image": np.zeros((100, 100, 3), dtype=np.uint8),
+        }
+
         info = {'shape': state.shape}
-        return np.array(state, dtype=np.float32), info
+        return state_dict, info
+        # return np.array(state, dtype=np.float32), info
         # info = {'shape': state_image.shape}
         # return np.array(state_image, dtype=np.float32).flatten(), info
     
@@ -280,8 +288,8 @@ class Robot:
         reward = 0
         terminated = False
         truncated = False
-        max_revard = 10000.0
-        max_penalty = -10000.0
+        max_revard = 1000.0
+        max_penalty = -1000.0
         Cd = 0.15
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
@@ -300,19 +308,19 @@ class Robot:
         Cp1 = 0.5
         Cp2 = 0.001
 
-        Cro = 50.0
+        Cro = 10.0
         # print('Dt = ', Dt)
         max_Dt = 20.0
 
         # Exp 1
-        # move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
-        # orient_to_goal_reward = - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
-        # approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xt)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
+        move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
+        orient_to_goal_reward = - ((Cp1 * hd) ** 2) # * (Cp2 * ((max_Dt - Dt) ** 4))
+        approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xtn)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
 
         # Exp 2
-        move_to_goal_reward = 0#(Cr * (self.Dt_l - Dt)) ** 3
-        orient_to_goal_reward = 0 # - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
-        approaching_an_obstacle_reward = - ((Cro * Xtn) ** 4)
+        # move_to_goal_reward = 0#(Cr * (self.Dt_l - Dt)) ** 3
+        # orient_to_goal_reward = 0 # - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
+        # approaching_an_obstacle_reward = - ((Cro * Xtn) ** 4)
 
         if Dg < Cd:
             reward = max_revard #* (1 - (self.n_steps / max_steps))
@@ -327,8 +335,8 @@ class Robot:
             reward = move_to_goal_reward + orient_to_goal_reward
             truncated = True
             reason = 'Time is out'
-        elif Xt < Cop:
-            reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
+        # elif Xt < Cop:
+        #     reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
         else:
             reward = move_to_goal_reward + orient_to_goal_reward
             # reward = orient_to_goal_reward + approaching_an_obstacle_reward
@@ -359,7 +367,7 @@ class Robot:
         # print('hd = ', hd)
 
         self.Dt_l = Dt
-        self.Xt_l = Xt
+        self.Xt_l = Xtn
 
         if self.static_collision[0]:
             obstacle_type = 'static'
