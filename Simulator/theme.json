@@ -1,0 +1,20 @@
+{
+    "button":
+    {
+
+    },
+
+    "label":
+    {
+        "colours":
+        {
+            "normal_text": "Black"
+        },
+        "font":
+        {
+            "size": "16",
+            "bold": "0",
+            "italic": "0"
+        }
+    }
+}

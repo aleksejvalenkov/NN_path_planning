@@ -125,13 +125,148 @@ def main():
     font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
     pg.display.set_caption("Robot Simulator")
 
-    gui_surface = pg.Surface((500, 1000))
-    gui_surface.fill(pg.Color(silver_gui))
-    manager = pg_gui.UIManager((500, 1000))
+    robot_surface = pg.Surface((1000, 1000))
 
-    hello_button = pg_gui.elements.UIButton(relative_rect=pg.Rect((350, 275), (100, 50)),
-                                             text='Say Hello',
-                                             manager=manager)
+    gui_surface = pg.Surface((1500, 1000))
+    gui_surface.fill(pg.Color(silver_gui))
+    manager = pg_gui.UIManager((1500, 1000), theme_path="Simulator/theme.json")
+
+    start_button = pg_gui.elements.UIButton(
+        relative_rect=pg.Rect((1040, 10), (200, 40)),
+        text='Начать',
+        manager=manager
+    )
+
+    stop_button = pg_gui.elements.UIButton(
+        relative_rect=pg.Rect((1260, 10), (200, 40)),
+        text='Остановить',
+        manager=manager
+    )
+
+    calibrate_button = pg_gui.elements.UIButton(
+        relative_rect=pg.Rect((1040, 60), (200, 40)),
+        text='Калибровать',
+        manager=manager
+    )
+
+    reset_button = pg_gui.elements.UIButton(
+        relative_rect=pg.Rect((1260, 60), (200, 40)),
+        text='Применить параметры',
+        manager=manager
+    )
+
+    label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1050, 110), (400, 40)),
+        text='Начальные параметры сенсоров',
+        manager=manager
+    )
+    
+    # Header labels for X and Y columns
+    xy_header_x = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1170, 160), (150, 25)),
+        text='X',
+        manager=manager
+    )
+    xy_header_y = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1320, 160), (150, 25)),
+        text='Y',
+        manager=manager
+    )
+
+    # Sensor 1 label
+    sensor_1_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1070, 185), (90, 40)),
+        text='Сенсор 1:',
+        manager=manager
+    )
+    sensor_1_x = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1170, 185), (150, 40)),
+        manager=manager
+    )
+    sensor_1_y = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1320, 185), (150, 40)),
+        manager=manager
+    )
+
+    # Sensor 2 label
+    sensor_2_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1070, 235), (90, 40)),
+        text='Сенсор 2:',
+        manager=manager
+    )
+    sensor_2_x = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1170, 235), (150, 40)),
+        manager=manager
+    )
+    sensor_2_y = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1320, 235), (150, 40)),
+        manager=manager
+    )
+
+    # Sensor 3 label
+    sensor_3_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1070, 285), (90, 40)),
+        text='Сенсор 3:',
+        manager=manager
+    )
+    sensor_3_x = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1170, 285), (150, 40)),
+        manager=manager
+    )
+    sensor_3_y = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1320, 285), (150, 40)),
+        manager=manager
+    )
+
+    sensors_dist_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1020, 335), (350, 40)),
+        text='Расстояние между маяками на роботе:',
+        manager=manager
+    )
+    sensors_dist = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1390, 335), (80, 40)),
+        manager=manager
+    )
+
+    calib_rect_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1005, 385), (380, 40)),
+        text='Сторона квадрата калибровочной траектории:',
+        manager=manager
+    )
+    calib_rect = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1390, 385), (80, 40)),
+        manager=manager
+    )
+
+    disperse_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1020, 435), (350, 40)),
+        text='Дисперсия шума датчиков:',
+        manager=manager
+    )
+    disperse = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1390, 435), (80, 40)),
+        manager=manager
+    )
+
+    error_radius_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1020, 485), (350, 40)),
+        text='Радиус ошибки установки стат. маяков:',
+        manager=manager
+    )
+    error_radius = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1390, 485), (80, 40)),
+        manager=manager
+    )
+
+    result_rmse_label = pg_gui.elements.UILabel(
+        relative_rect=pg.Rect((1020, 535), (350, 40)),
+        text='RMSE результата:',
+        manager=manager
+    )
+    result_rmse = pg_gui.elements.UITextEntryLine(
+        relative_rect=pg.Rect((1390, 535), (80, 40)),
+        manager=manager
+    )
 
     # sensor_1_init_transform[0][2] += random.randint(-std//2, std//2)
     # sensor_1_init_transform[1][2] += random.randint(-std//2, std//2)
@@ -160,36 +295,39 @@ def main():
     while run:
         time_delta = clock.tick(FPS)/1000.0
         # Check events
-        for i in pg.event.get():
-            manager.process_events(i)
-            if i.type == QUIT:
+        for event in pg.event.get():
+            if event.type == QUIT:
                 pg.quit()
                 # sys.exit()
                 run = False
                 return
-            elif i.type == KEYDOWN:
-                # print(i.key)
-                if i.key == 27 or i.key == 113:
+            
+            elif event.type == pg_gui.UI_BUTTON_PRESSED:
+              if event.ui_element == hello_button:
+                  print('Hello World!')
+
+            elif event.type == KEYDOWN:
+                # print(event.key)
+                if event.key == 27 or event.key == 113:
                     pg.quit()
                     # sys.exit()
                     run = False
                     return
-                if i.key == 13:
+                if event.key == 13:
                     robot_main.auto_mode = not robot_main.auto_mode
-                if i.key == 32:
+                if event.key == 32:
                     recording = not recording
-                if i.key == 112:
+                if event.key == 112:
                     calib_movement = not calib_movement
                     
-            elif i.type == pg.MOUSEBUTTONDOWN:
-                if i.button == 1:
-                    robot_main.way_point = i.pos
-            
-            if i.type == pg.UI_BUTTON_PRESSED:
-              if i.ui_element == hello_button:
-                  print('Hello World!')
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    robot_main.way_point = event.pos
 
-        manager.update(time_delta)
+            manager.process_events(event)
+
+        
+        # Handle key presses
         keys = pg.key.get_pressed()
         if keys[pg.K_w]:
             robot_main.teleop(teleop_vec=[4,0,0])
@@ -300,11 +438,12 @@ def main():
         step += 1
         # Update display
         screen.fill(silver)
+        robot_surface.fill(silver)
 
-        robot_main.draw(screen)
+        robot_main.draw(robot_surface)
 
         for robot in particles:
-            robot.draw(screen)
+            robot.draw(robot_surface)
 
         x,y,theta = robot_main.get_pose()
         text = font.render(f'Robot coordinates: x = {x:.2f}, y = {y:.2f}, theta = {theta:.2f}' , True, black)
@@ -319,8 +458,10 @@ def main():
             pg.draw.aaline(screen, blue, [400,600], [400,400])
             pg.draw.aaline(screen, blue, [400,400], [600,400])
 
-        screen.blit(gui_surface, (1000, 0))
+        manager.update(time_delta)
+        screen.blit(gui_surface, (0, 0))
         manager.draw_ui(gui_surface)
+        screen.blit(robot_surface, (0, 0))
         pg.display.update()
 
 
@@ -340,4 +481,4 @@ if __name__ == '__main__':
     plt.plot(robot_poses_pred_x, robot_poses_pred_y, label='Kalman pose')
 
     plt.legend(loc="lower right")
-    plt.show()
+    # plt.show()
