@@ -1,4 +1,5 @@
 import pygame as pg
+import pygame_gui as pg_gui
 import sys
 import copy
 import random
@@ -70,12 +71,13 @@ def gen_particles(N, sensor_1_init_transform, sensor_2_init_transform, sensor_3_
 
 FPS = 30
 silver = (194, 194, 194)
+silver_gui = (160, 160, 160)
 black = (0, 0, 0)
 red =   (194,0 , 0)
 green = (0, 194, 0)
 blue =  (0, 0, 194)
 
-WINDOW_SIZE = (1000, 1000)
+WINDOW_SIZE = (1500, 1000)
 robot_poses_truth_x = []
 robot_poses_truth_y = []
 
@@ -121,6 +123,15 @@ def main():
     screen = pg.display.set_mode(WINDOW_SIZE,RESIZABLE, 32)
     clock = pg.time.Clock()
     font = pg.font.SysFont("Ubuntu Condensed", 14, bold=False, italic=False)
+    pg.display.set_caption("Robot Simulator")
+
+    gui_surface = pg.Surface((500, 1000))
+    gui_surface.fill(pg.Color(silver_gui))
+    manager = pg_gui.UIManager((500, 1000))
+
+    hello_button = pg_gui.elements.UIButton(relative_rect=pg.Rect((350, 275), (100, 50)),
+                                             text='Say Hello',
+                                             manager=manager)
 
     # sensor_1_init_transform[0][2] += random.randint(-std//2, std//2)
     # sensor_1_init_transform[1][2] += random.randint(-std//2, std//2)
@@ -147,9 +158,10 @@ def main():
 
     step = 0
     while run:
-        clock.tick(FPS)
+        time_delta = clock.tick(FPS)/1000.0
         # Check events
         for i in pg.event.get():
+            manager.process_events(i)
             if i.type == QUIT:
                 pg.quit()
                 # sys.exit()
@@ -172,7 +184,12 @@ def main():
             elif i.type == pg.MOUSEBUTTONDOWN:
                 if i.button == 1:
                     robot_main.way_point = i.pos
+            
+            if i.type == pg.UI_BUTTON_PRESSED:
+              if i.ui_element == hello_button:
+                  print('Hello World!')
 
+        manager.update(time_delta)
         keys = pg.key.get_pressed()
         if keys[pg.K_w]:
             robot_main.teleop(teleop_vec=[4,0,0])
@@ -301,6 +318,9 @@ def main():
             pg.draw.aaline(screen, blue, [600,600], [400,600])
             pg.draw.aaline(screen, blue, [400,600], [400,400])
             pg.draw.aaline(screen, blue, [400,400], [600,400])
+
+        screen.blit(gui_surface, (1000, 0))
+        manager.draw_ui(gui_surface)
         pg.display.update()
 
 

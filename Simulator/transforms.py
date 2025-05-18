@@ -42,10 +42,9 @@ def distance(p1, p2):
 def point_form_two_rounds(c1, d1, c2, d2):
     dist = distance(c1, c2)
     if dist > d1 + d2:
-        op = (dist / (d1 + d2)) + 0.1
+        op = (dist / (d1 + d2)) + 0.01
         d1 = d1 * op
         d2 = d2 * op
-
 
     x = c1[0] + (c2[0] - c1[0])*((d1**2 - d2**2 + dist**2)/(2*dist**2))
     k = (c2[1]-c1[1])/(c2[0]-c1[0])
