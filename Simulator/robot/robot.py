@@ -319,7 +319,7 @@ class Robot:
         terminated = False
         truncated = False
         max_revard = 1000.0
-        max_penalty = -1000.0
+        max_penalty = -10000.0
         Cd = 0.15
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
@@ -370,15 +370,15 @@ class Robot:
         # r_time = - eps
 
         # Exp 4 For Safe
-        Cop = 0.3
+        Cop = 0.1
         Co = 0.1
-        alpha = 0
-        c_orient = 0.5
-        beta = -1
+        alpha = 10
+        c_orient = 10
+        beta = -10
         beta_crash = max_penalty
-        c_smooth = 5.0#50
-        c_energy = 10.0
-        eps = -0.00
+        c_smooth = 0.0#50
+        c_energy = 0.0
+        eps = -0.01
         r_prog =  (alpha * (self.Dt_l - Dt)) ** 3
         r_orient = - ((c_orient * hd) ** 2)
         r_col = 0

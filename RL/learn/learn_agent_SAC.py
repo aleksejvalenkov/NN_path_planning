@@ -100,7 +100,7 @@ agent = SAC(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/SAC_RNN_gpt_reward_new_model_180_rays/25-05-17_20-51-32-979051_SAC_RNN_FAST/checkpoints/agent_550000.pt')
+agent.load('runs/torch/SAC_RNN_gpt_reward_new_model_180_rays/25-05-17_20-04-57-791190_SAC_RNN/checkpoints/agent_25000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
