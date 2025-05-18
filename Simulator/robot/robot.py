@@ -196,8 +196,8 @@ class Robot:
         self.goal = goal
         # print('solve A*')
         # print('goal = ', goal)
-        # self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
-        self.way_points = None
+        self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
+        # self.way_points = None
         if self.way_points is not None:
             if len(self.way_points):
                 self.target = self.way_points[0]

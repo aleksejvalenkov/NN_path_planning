@@ -34,15 +34,15 @@ from RL.agent.SAC_skrl_RNN_policy import Actor, Critic
 # custom_env = CustomEnv(render_mode="human")
 # custom_env = CustomEnv(render_mode=None)
 
-# NUM_ENVS = 1
-# robot_init_pos = [100, 100, 1.57]
-# robot_goal_pos = [1500, 300, 1.57]
-# seed = 42
+NUM_ENVS = 1
+robot_init_pos = [100, 100, 1.57]
+robot_goal_pos = [1500, 300, 1.57]
+seed = 42
 
-NUM_ENVS = 2
-robot_init_pos = None
-robot_goal_pos = None
-seed = None
+# NUM_ENVS = 2
+# robot_init_pos = None
+# robot_goal_pos = None
+# seed = None
 
 gym.register(id="my_v1",entry_point=CustomEnv, vector_entry_point=CustomEnv)
 env = gym.make_vec(id="my_v1", 

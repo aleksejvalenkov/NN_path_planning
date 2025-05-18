@@ -82,6 +82,20 @@ class GlobalPlanner:
             # path = np.vstack((path, np.array(goal)))
         # path.append(goal)
         # path = np.array(path)
+        # Remove straight sections from the path
+        if path is not None and len(path) > 2:
+            filtered_path = [path[0]]
+            for i in range(1, len(path) - 1):
+                prev = path[i - 1]
+                curr = path[i]
+                next = path[i + 1]
+                # Check if three points are collinear (straight line)
+                v1 = curr[:2] - prev[:2]
+                v2 = next[:2] - curr[:2]
+                if not np.allclose(v1 / np.linalg.norm(v1), v2 / np.linalg.norm(v2)):
+                    filtered_path.append(curr)
+            filtered_path.append(path[-1])
+            path = np.array(filtered_path)
         return path[1:]
 
     def get_bin_map(self):

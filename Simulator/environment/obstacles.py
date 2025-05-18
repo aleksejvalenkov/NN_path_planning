@@ -62,15 +62,15 @@ class Obstacle:
 
 
 class MoveableObstacle:
-    def __init__(self, init_pos) -> None:
+    def __init__(self, init_pos, rays=10, radius=25, resizable=False) -> None:
 
 
         self.DRAW_TARGET = True
 
         self.fov = 360 # in degree
         self.fov_rad = np.radians(self.fov) # in radians
-        self.rays = 10 # pixels in 1d image from camera
-        self.radius = 25
+        self.rays = rays
+        self.radius = radius
         self.rays_angles = np.arange(start=-self.fov_rad/2, stop=self.fov_rad/2, step=self.fov_rad/self.rays)
         self.edge_points_init = [np.array([self.radius * np.cos(rays_angle), self.radius * np.sin(rays_angle), 1]) for rays_angle in self.rays_angles]
 
@@ -83,7 +83,7 @@ class MoveableObstacle:
         self.edge_points = copy.copy(self.edge_points_init)
         self.n_steps = 0
 
-        self.robot_radius = 10
+        self.resizable = resizable
         self.Vx = 0
         self.Vy = 0
         self.W = 0
