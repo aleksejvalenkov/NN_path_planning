@@ -19,8 +19,9 @@ class CustomEnv(gym.Env):
         self.sim_env = Simulator(render_fps=self.metadata["render_fps"], 
                                                 seed=kwargs['seed'],
                                                 robot_init_pos=kwargs['robot_init_pos'],
-                                                robot_goal_pos=kwargs['robot_goal_pos'])
-        
+                                                robot_goal_pos=kwargs['robot_goal_pos'],
+                                                run_dwa=kwargs['run_dwa'])
+
         observation, info = self.sim_env.reset()
         print('observation shape = ', info['shape'])
         # Example when using discrete actions:

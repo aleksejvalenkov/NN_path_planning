@@ -11,6 +11,12 @@ from enum import Enum
 
 import matplotlib.pyplot as plt
 import numpy as np
+import sys, os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+from utils.transforms import *
 
 show_animation = True
 
@@ -38,15 +44,15 @@ class Config:
 
     def __init__(self):
         # robot parameter
-        self.max_speed = 1.0  # [m/s]
-        self.min_speed = -0.5  # [m/s]
+        self.max_speed = 0.5  # [m/s]
+        self.min_speed = -0.1  # [m/s]
         self.max_yaw_rate = 40.0 * math.pi / 180.0  # [rad/s]
-        self.max_accel = 0.2  # [m/ss]
+        self.max_accel = 5.0  # [m/ss]
         self.max_delta_yaw_rate = 40.0 * math.pi / 180.0  # [rad/ss]
-        self.v_resolution = 0.01  # [m/s]
-        self.yaw_rate_resolution = 0.1 * math.pi / 180.0  # [rad/s]
+        self.v_resolution = 0.1  # [m/s]
+        self.yaw_rate_resolution = 0.5 * math.pi / 180.0  # [rad/s]
         self.dt = 0.1  # [s] Time tick for motion prediction
-        self.predict_time = 3.0  # [s]
+        self.predict_time = 1.0  # [s]
         self.to_goal_cost_gain = 0.15
         self.speed_cost_gain = 1.0
         self.obstacle_cost_gain = 1.0
@@ -55,28 +61,13 @@ class Config:
 
         # if robot_type == RobotType.circle
         # Also used to check if goal is reached in both types
-        self.robot_radius = 1.0  # [m] for collision check
+        self.robot_radius = 0.1  # [m] for collision check
 
         # if robot_type == RobotType.rectangle
-        self.robot_width = 0.5  # [m] for collision check
-        self.robot_length = 1.2  # [m] for collision check
+        self.robot_width = 0.32  # [m] for collision check
+        self.robot_length = 0.51  # [m] for collision check
         # obstacles [x(m) y(m), ....]
-        self.ob = np.array([[-1, -1],
-                            [0, 2],
-                            [4.0, 2.0],
-                            [5.0, 4.0],
-                            [5.0, 5.0],
-                            [5.0, 6.0],
-                            [5.0, 9.0],
-                            [8.0, 9.0],
-                            [7.0, 9.0],
-                            [8.0, 10.0],
-                            [9.0, 11.0],
-                            [12.0, 13.0],
-                            [12.0, 12.0],
-                            [15.0, 15.0],
-                            [13.0, 13.0]
-                            ])
+        self.ob = np.array([[0.0, 0.0]])  # [m] for collision check
 
     @property
     def robot_type(self):
@@ -97,9 +88,19 @@ def motion(x, u, dt):
     motion model
     """
 
-    x[2] += u[1] * dt
-    x[0] += u[0] * math.cos(x[2]) * dt
-    x[1] += u[0] * math.sin(x[2]) * dt
+    # x[2] += u[1] * dt
+    # x[0] += u[0] * math.cos(x[2]) * dt
+    # x[1] += u[0] * math.sin(x[2]) * dt
+
+    transform = get_transform(x[0:2], x[2])
+    transform_move = get_transform(np.array([u[0]*dt, 0]), u[1]*dt)
+    # print("transform", transform)
+    vector_move = np.array([u[0], 0, u[1]]) * dt
+    new_transform = transform @ transform_move
+    # print("vector", new_transform)
+    x[0] = new_transform[0, 2]
+    x[1] = new_transform[1, 2]
+    x[2] = get_theta_from_rot_mat(new_transform)
     x[3] = u[0]
     x[4] = u[1]
 
@@ -257,52 +258,90 @@ def plot_robot(x, y, yaw, config):  # pragma: no cover
         plt.plot([x, out_x], [y, out_y], "-k")
 
 
-def main(gx=10.0, gy=10.0, robot_type=RobotType.circle):
-    print(__file__ + " start!!")
-    # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
-    x = np.array([0.0, 0.0, math.pi / 8.0, 0.0, 0.0])
-    # goal position [x(m), y(m)]
-    goal = np.array([gx, gy])
+class DWA:
+    def __init__(self, obstacles_points, goal, start):
+        self.gx = goal[0]
+        self.gy = goal[1]
+        self.robot_type = RobotType.rectangle
+        self.config = config
+        self.config.robot_type = RobotType.rectangle
+        self.config.ob = obstacles_points
 
-    # input [forward speed, yaw_rate]
+        # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
+        self.x = np.array([start[0], start[1], start[2], 0.0, 0.0])
+        # goal position [x(m), y(m)]
+        self.goal = np.array(goal)
+    
 
-    config.robot_type = robot_type
-    trajectory = np.array(x)
-    ob = config.ob
-    while True:
-        u, predicted_trajectory = dwa_control(x, config, goal, ob)
-        x = motion(x, u, config.dt)  # simulate robot
-        trajectory = np.vstack((trajectory, x))  # store state history
 
+    def step(self, draw=False):
+        # input [forward speed, yaw_rate]
+        u, predicted_trajectory = dwa_control(self.x, self.config, self.goal, self.config.ob)
+        self.x = motion(self.x, u, self.config.dt)
+
+        if draw:
+                plt.cla()
+                # for stopping simulation with the esc key.
+                plt.gcf().canvas.mpl_connect(
+                    'key_release_event',
+                    lambda event: [exit(0) if event.key == 'escape' else None])
+                plt.plot(predicted_trajectory[:, 0], predicted_trajectory[:, 1], "-g")
+                plt.plot(self.x[0], self.x[1], "xr")
+                plt.plot(self.goal[0], self.goal[1], "xb")
+                plt.plot(self.config.ob[:, 0], self.config.ob[:, 1], "ok")
+                plot_robot(self.x[0], self.x[1], self.x[2], self.config)
+                plot_arrow(self.x[0], self.x[1], self.x[2])
+                plt.axis("equal")
+                plt.grid(True)
+                plt.pause(0.0001)
+
+
+        return self.x, u, predicted_trajectory
+
+    def show(self, start):
+
+        print(__file__ + " start!!")
+        # initial state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
+        x = np.array([start[0], start[1], start[2], 0.0, 0.0])
+        # input [forward speed, yaw_rate]
+
+        trajectory = np.array(x)
+        ob = config.ob
+        while True:
+            print("x = ", x)
+            u, predicted_trajectory = dwa_control(x, config, self.goal, ob)
+            x = motion(x, u, config.dt)  # simulate robot
+            trajectory = np.vstack((trajectory, x))  # store state history
+
+            if show_animation:
+                plt.cla()
+                # for stopping simulation with the esc key.
+                plt.gcf().canvas.mpl_connect(
+                    'key_release_event',
+                    lambda event: [exit(0) if event.key == 'escape' else None])
+                plt.plot(predicted_trajectory[:, 0], predicted_trajectory[:, 1], "-g")
+                plt.plot(x[0], x[1], "xr")
+                plt.plot(self.goal[0], self.goal[1], "xb")
+                plt.plot(ob[:, 0], ob[:, 1], "ok")
+                plot_robot(x[0], x[1], x[2], config)
+                plot_arrow(x[0], x[1], x[2])
+                plt.axis("equal")
+                plt.grid(True)
+                plt.pause(0.0001)
+
+            # check reaching goal
+            dist_to_goal = math.hypot(x[0] - self.goal[0], x[1] - self.goal[1])
+            if dist_to_goal <= config.robot_radius:
+                print("Goal!!")
+                break
+
+        print("Done")
         if show_animation:
-            plt.cla()
-            # for stopping simulation with the esc key.
-            plt.gcf().canvas.mpl_connect(
-                'key_release_event',
-                lambda event: [exit(0) if event.key == 'escape' else None])
-            plt.plot(predicted_trajectory[:, 0], predicted_trajectory[:, 1], "-g")
-            plt.plot(x[0], x[1], "xr")
-            plt.plot(goal[0], goal[1], "xb")
-            plt.plot(ob[:, 0], ob[:, 1], "ok")
-            plot_robot(x[0], x[1], x[2], config)
-            plot_arrow(x[0], x[1], x[2])
-            plt.axis("equal")
-            plt.grid(True)
+            plt.plot(trajectory[:, 0], trajectory[:, 1], "-r")
             plt.pause(0.0001)
-
-        # check reaching goal
-        dist_to_goal = math.hypot(x[0] - goal[0], x[1] - goal[1])
-        if dist_to_goal <= config.robot_radius:
-            print("Goal!!")
-            break
-
-    print("Done")
-    if show_animation:
-        plt.plot(trajectory[:, 0], trajectory[:, 1], "-r")
-        plt.pause(0.0001)
-        plt.show()
+            plt.show()
 
 
-if __name__ == '__main__':
-    main(robot_type=RobotType.rectangle)
-    # main(robot_type=RobotType.circle)
+# if __name__ == '__main__':
+#     main(robot_type=RobotType.rectangle)
+#     # main(robot_type=RobotType.circle)
