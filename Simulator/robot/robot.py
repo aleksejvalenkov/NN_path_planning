@@ -21,6 +21,28 @@ import torch.nn.functional as F
 
 METRIC_KF = 100 # 1m = 100px
 
+class RewardNormalizer:
+    def __init__(self, alpha=0.05, epsilon=1e-8):
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.mean = 0.0
+        self.sq_mean = 0.0  # для расчета дисперсии
+    
+    def update(self, reward):
+        # Обновляем экспоненциальное среднее и среднеквадратичное
+        self.mean = self.alpha * reward + (1 - self.alpha) * self.mean
+        self.sq_mean = self.alpha * (reward ** 2) + (1 - self.alpha) * self.sq_mean
+
+    def normalize(self, reward):
+        # Считаем std через дисперсию
+        variance = self.sq_mean - self.mean ** 2
+        std = (variance + self.epsilon) ** 0.5
+        return (reward - self.mean) / (std + self.epsilon)
+    
+    def process(self, reward):
+        self.update(reward)
+        return self.normalize(reward)
+
 class Robot:
     def __init__(self, map, init_pos) -> None:
         self.length_m = 0.51 # In meter 
@@ -54,10 +76,10 @@ class Robot:
         self.Vx = 0 # In m/s
         self.Vy = 0 # In m/s 
         self.W = 0 # In rad/s
-        self.max_vx = 0.5 # In m/s
-        self.min_vx = -0.2 # In m/s
-        self.max_vy = 0.2 # In m/s
-        self.min_vy = -0.2 # In m/s
+        self.max_vx = 0.4 # In m/s
+        self.min_vx = -0.1 # In m/s
+        self.max_vy = 0.1 # In m/s
+        self.min_vy = -0.1 # In m/s
         self.max_w = 1.0 # In rad/s
         self.min_w = -1.0 # In rad/s
         self.wheel_eps = 30 # angular acceleration for the wheel In 
@@ -116,6 +138,11 @@ class Robot:
         self.get_state()
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
         self.Xt_l = np.min(self.lidar_distances)
+        self.Vx_l = self.Vx
+        self.Vy_l = self.Vy
+        self.W_l = self.W
+
+        self.reward_norm = RewardNormalizer(alpha=0.01)
         
         self.instantaneous_reward = None
 
@@ -162,8 +189,7 @@ class Robot:
 
         lidar_transform = self.transform @ self.lidar_transform
         self.lidar.update(lidar_transform)
-        self.lidar_points, self.lidar_distances = self.lidar.scan(obstacles_lines)
-
+        self.lidar_points, self.lidar_distances = self.lidar.scan(obstacles_lines, robot_lines=self.get_lines())
         
     def set_target(self, goal):
         # self.target = target
@@ -203,7 +229,8 @@ class Robot:
         MAX_VAL = 5
         MIN_VAL = -5
         # 20 mins ranges in 60 rays of lidar [20] range = 0m <-> 5m
-        # lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
+        lidar_distances_norm = np.array(self.lidar_distances)/self.lidar.ray_lenght
+        
         # self.lidar_distances_mins = np.zeros((20), dtype=np.float32)
         # c = len(self.lidar_distances) // len(self.lidar_distances_mins)
         # for i in range(len(self.lidar_distances_mins)):
@@ -211,7 +238,7 @@ class Robot:
         # ranges = normalize(self.lidar_distances_mins, 0, self.lidar.ray_lenght)
         ranges = np.array(self.lidar_distances)
         # Velocity lin, angular [2] range = -1m <-> 1m
-        velocity = np.array([self.Vx, self.W], dtype=np.float32)
+        velocity = np.array([self.Vx, self.Vy, self.W], dtype=np.float32)
         # velocity = normalize(velocity, -1, 1)
         # Target point vector [2] range = -8m <-> 8m
         target_point_loc = inv(self.transform) @ np.array([self.target[0], self.target[1], 1], dtype=np.float32)
@@ -221,20 +248,20 @@ class Robot:
         # target orientation in local [1] # in rad range = -3.14m <-> 3.14m
         robot_orientation = self.theta
         target_orientation = get_target_angle((self.x, self.y), (self.target[0], self.target[1]))
-        self.err_orientation = get_theta_error(target_orientation, robot_orientation)
-        err_orientation = normalize(self.err_orientation, -np.pi, np.pi)
+        err_orientation = get_theta_error(target_orientation, robot_orientation)
+        err_orientation_norm = normalize(err_orientation, -np.pi, np.pi)
 
         robot_orientation_norm = normalize(robot_orientation, -np.pi, np.pi)
         target_orientation_norm = normalize(target_orientation, -np.pi, np.pi)
         
-        state_dict = {
-            'ranges':ranges,
-            'velocity':velocity,
-            'target_point_vector':target_point_vector,
-            'robot_orientation_norm':robot_orientation_norm,
-            'target_orientation_norm':target_orientation_norm,
-            'polar_local_map':None,
-        }
+        # state_dict = {
+        #     'ranges':ranges,
+        #     'velocity':velocity,
+        #     'target_point_vector':target_point_vector,
+        #     'robot_orientation_norm':robot_orientation_norm,
+        #     'target_orientation_norm':target_orientation_norm,
+        #     'polar_local_map':None,
+        # }
 
 
 
@@ -261,8 +288,11 @@ class Robot:
         #                                  draw=False)
 
         state_dict = {
-            "state": state,
-            # "state_image": np.zeros((100, 100, 3), dtype=np.uint8),
+            'ranges': np.array(lidar_distances_norm, dtype=np.float32), # 20
+            'velocity': np.array(velocity, dtype=np.float32), # 3
+            'target_point_vector': np.array(target_point_vector, dtype=np.float32), # 2
+            'target_orientation': np.array(target_orientation, dtype=np.float32), # 1 np.array(target_orientation, dtype=np.float32)
+            'robot_orientation': np.array(robot_orientation, dtype=np.float32), # 1 np.array(robot_orientation, dtype=np.float32)
         }
 
         info = {'shape': state.shape}
@@ -293,8 +323,8 @@ class Robot:
         Cd = 0.15
         Dt = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         Dg = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.goal)[0:2]) / METRIC_KF
-        Co = 0.35
-        Cop = 1.2 # in meter mast be < self.lidar.ray_lenght
+        Co = 0.2
+        Cop = 0.2 # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.lidar_distances)
         Xtn = (Xt - Cop) / self.lidar.ray_lenght 
         max_live_time = 30
@@ -305,7 +335,7 @@ class Robot:
         hd = np.abs(err_orientation)
         hd = normalize(hd, 0, np.pi)
         Cr = 100.0
-        Cp1 = 0.5
+        Cp1 = 0.2 #0.5
         Cp2 = 0.001
 
         Cro = 10.0
@@ -313,36 +343,76 @@ class Robot:
         max_Dt = 20.0
 
         # Exp 1
-        move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
-        orient_to_goal_reward = - ((Cp1 * hd) ** 2) # * (Cp2 * ((max_Dt - Dt) ** 4))
-        approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xtn)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
+        # move_to_goal_reward = (Cr * (self.Dt_l - Dt)) ** 3 #Cr * (self.Dt_l - Dt) * pow(2,(self.Dt_l/Dt))
+        # orient_to_goal_reward = - ((Cp1 * hd) ** 2) # * (Cp2 * ((max_Dt - Dt) ** 4))
+        # approaching_an_obstacle_reward = - (Cro * (self.Xt_l - Xtn)) ** 3 # * pow(2,(self.Xt_l/Xt)) #Cro * (Xt - Cop)
 
         # Exp 2
         # move_to_goal_reward = 0#(Cr * (self.Dt_l - Dt)) ** 3
         # orient_to_goal_reward = 0 # - ((Cp1 * hd) ** 2) * (Cp2 * ((max_Dt - Dt) ** 4))
         # approaching_an_obstacle_reward = - ((Cro * Xtn) ** 4)
 
+        # Exp 3 For FAST
+        # Cop = 0.2
+        # Co = 0.2
+        # alpha = 100
+        # c_orient = 0.5
+        # beta = -10
+        # beta_crash = max_penalty
+        # c_smooth = 0.0#50
+        # c_energy = 0.0
+        # eps = -0.01
+        # r_prog =  (alpha * (self.Dt_l - Dt)) ** 3
+        # r_orient = - ((c_orient * hd) ** 2)
+        # r_col = 0
+        # r_smooth = - (c_smooth * ((self.Vx_l - self.Vx) ** 2 + (self.Vy_l - self.Vy) ** 2 + (self.W_l - self.W) ** 2))
+        # r_energy = - (c_energy * ((self.Vx_l ** 2 + self.Vy_l ** 2 + self.W_l ** 2)))
+        # r_time = - eps
+
+        # Exp 4 For Safe
+        Cop = 0.3
+        Co = 0.1
+        alpha = 0
+        c_orient = 0.5
+        beta = -1
+        beta_crash = max_penalty
+        c_smooth = 5.0#50
+        c_energy = 10.0
+        eps = -0.00
+        r_prog =  (alpha * (self.Dt_l - Dt)) ** 3
+        r_orient = - ((c_orient * hd) ** 2)
+        r_col = 0
+        r_smooth = - (c_smooth * ((self.Vx_l - self.Vx) ** 2 + (self.Vy_l - self.Vy) ** 2 + (self.W_l - self.W) ** 2))
+        r_energy = - (c_energy * ((self.Vx_l ** 2 + self.Vy_l ** 2 + self.W_l ** 2)))
+        r_time = - eps
+
+
         if Dg < Cd:
-            reward = max_revard #* (1 - (self.n_steps / max_steps))
+            # reward = max_revard #* (1 - (self.n_steps / max_steps))
+            r_prog = max_revard
             terminated = True
             reason = 'Goal reached'
-        elif self.collision[0]: # Xt < Co or
-            reward = max_penalty
+        elif self.collision[0] or Xt < Co:
+            # reward = max_penalty
+            r_col = beta_crash
             terminated = True
             reason = 'Collision'
         elif self.live_secs > max_live_time:
             # reward = max_penalty/4
-            reward = move_to_goal_reward + orient_to_goal_reward
+            # reward = move_to_goal_reward + orient_to_goal_reward
             truncated = True
             reason = 'Time is out'
         # elif Xt < Cop:
-        #     reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
+        #     # reward = move_to_goal_reward + orient_to_goal_reward + approaching_an_obstacle_reward
+        #     r_col = beta
         else:
-            reward = move_to_goal_reward + orient_to_goal_reward
+            pass
+            # reward = move_to_goal_reward + orient_to_goal_reward
             # reward = orient_to_goal_reward + approaching_an_obstacle_reward
 
         if Dt < Cd:
-            reward = max_revard #* (1 - (self.n_steps / max_steps))
+            # reward = max_revard #* (1 - (self.n_steps / max_steps))
+            r_prog = max_revard
             # self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
 
             if self.way_points is not None:
@@ -353,11 +423,13 @@ class Robot:
                     self.target = self.goal
 
         
+        new_reward = r_prog + r_orient + r_col + r_smooth + r_energy + r_time
+        reward = self.reward_norm.process(new_reward)
         # print("Xt = ", Xt)
         # print('robot = ',self.state[25], 'target = ',self.state[26])
 
         # reward = normalize(reward, max_penalty, max_revard) - 0.5
-        reward = float(reward)
+        # reward = float(new_reward)
         self.instantaneous_reward = reward
         # print("reward = ",  reward)
         # print('Dt = ', Dt)
@@ -367,6 +439,9 @@ class Robot:
         # print('hd = ', hd)
 
         self.Dt_l = Dt
+        self.Vx_l = self.Vx
+        self.Vy_l = self.Vy
+        self.W_l = self.W
         self.Xt_l = Xtn
 
         if self.static_collision[0]:
@@ -409,7 +484,8 @@ class Robot:
         else:
             # print(action)
             # move_vec = np.array([sigmoid(action[0]), 0, np.tanh(action[1])])
-            move_vec = np.array([action[0], 0, action[1]])
+            move_vec = np.array([action[0], action[1], action[2]])
+            # move_vec = np.array([action[0], 0, action[1]])
             # move_vec = np.zeros((3))
             # move_vec[0] = constrain(action[0], -self.max_vx, self.max_vx)
             # move_vec[1] = constrain(action[1], -self.max_vy, self.max_vy)
@@ -501,7 +577,7 @@ class Robot:
                 move_vector = self.t_vec - pushing_away_vector
         
             
-        if self.render_fps > 10:
+        if self.render_fps > 5:
             move_vector = move_vector * METRIC_KF / self.render_fps
             W = teleop_vec[2] / self.render_fps
         else:

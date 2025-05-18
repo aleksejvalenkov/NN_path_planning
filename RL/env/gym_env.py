@@ -8,7 +8,7 @@ from Simulator.gui.sim import Simulator
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
-    metadata = {"render_modes": ["human"], "render_fps": 30}
+    metadata = {"render_modes": ["human"], "render_fps": 10}
 
     def __init__(self, render_mode=None, **kwargs):
         super().__init__()
@@ -25,14 +25,18 @@ class CustomEnv(gym.Env):
         print('observation shape = ', info['shape'])
         # Example when using discrete actions:
         self.action_space = spaces.Box(low=-1, high=1,
-                                            shape=(2,), dtype=np.float32)
+                                            shape=(3,), dtype=np.float32)
         # Example for using image as input (channel-first; channel-last also works):
         # self.observation_space = spaces.Box(low=-10, high=10,
         #                                     shape=info['shape'], dtype=np.float32)
         
         self.observation_space = spaces.Dict({
-            "state": spaces.Box(low=-10, high=10, shape=info['shape'], dtype=np.float32),
-            # "state_image": spaces.Box(low=0, high=255, shape=(100, 100, 3), dtype=np.uint8),
+            'ranges': spaces.Box(low=0, high=1, shape=(20,), dtype=np.float32),
+            # 'ranges': spaces.Box(low=0, high=1, shape=(180,), dtype=np.float32),
+            'velocity': spaces.Box(low=-1, high=1, shape=(3,), dtype=np.float32),
+            'target_point_vector': spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float32),
+            'robot_orientation': spaces.Box(low=-4, high=4, shape=(1,), dtype=np.float32),
+            'target_orientation': spaces.Box(low=-4, high=4, shape=(1,), dtype=np.float32),
         })
         
         assert render_mode is None or render_mode in self.metadata["render_modes"]

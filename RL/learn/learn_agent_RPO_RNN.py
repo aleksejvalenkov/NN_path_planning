@@ -32,13 +32,20 @@ NUM_ENVS = 6
 # custom_env = CustomEnv(render_mode="human")
 # custom_env = CustomEnv(render_mode=None)
 
+robot_init_pos = [100, 100, 1.57]
+robot_goal_pos = [1500, 300, 1.57]
+seed = 42
+# robot_init_pos = None
+# robot_goal_pos = None
+# seed = None
+
 gym.register(id="my_v1",entry_point=CustomEnv, vector_entry_point=CustomEnv)
 env = gym.make_vec(id="my_v1", 
                    num_envs=NUM_ENVS, 
                    vectorization_mode="async",
-                   seed=None,
-                   robot_init_pos=None,
-                   robot_goal_pos=None,
+                   seed=seed,
+                   robot_init_pos=robot_init_pos,
+                   robot_goal_pos=robot_goal_pos,
                    )
 
 env = wrap_env(env)
@@ -63,7 +70,7 @@ cfg = RPO_DEFAULT_CONFIG.copy()
 cfg["rollouts"] = 2048  # memory_size
 cfg["learning_epochs"] = 10
 cfg["mini_batches"] = 32
-cfg["alpha"] =  0.05                 # amount of uniform random perturbation on the mean actions: U(-alpha, alpha)
+cfg["alpha"] =  0.5                 # amount of uniform random perturbation on the mean actions: U(-alpha, alpha)
 cfg["discount_factor"] = 0.99
 cfg["lambda"] = 0.95
 cfg["learning_rate"] = 1e-3
@@ -88,7 +95,7 @@ cfg["value_preprocessor_kwargs"] = {}
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 250
 cfg["experiment"]["checkpoint_interval"] = 50000
-cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_base_reward_no_preprocessor"
+cfg["experiment"]["directory"] = "runs/torch/RPO_LSTM_base_new_model"
 
 
 agent = RPO(models=models,

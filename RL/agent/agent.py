@@ -67,7 +67,9 @@ class Agent:
         # self.agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
         
     def gen_action(self, observation):
-        observation = torch.tensor(observation["state"], dtype=torch.float32, device=self.device)
+        # observation = torch.tensor(observation["state"], dtype=torch.float32, device=self.device)
+        observation = np.zeros((27), dtype=np.float32)
+        observation = torch.tensor(observation, dtype=torch.float32, device=self.device)
         # state = {"states": observation, "rnn": [torch.zeros(1, 1, 256).to(self.device), torch.zeros(1, 1, 256).to(self.device)]}
         # print("states = ", observation)
         action = self.agent.act(observation, timestep=0, timesteps=1)

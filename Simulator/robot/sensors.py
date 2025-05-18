@@ -16,12 +16,12 @@ METRIC_KF = 100 # 1m = 100px
 
 class Lidar2D:
     def __init__(self, transform) -> None:
-        self.fov = 360 # in degree
+        self.fov = 180 # in degree
         self.fov_rad = np.radians(self.fov) # in radians
         self.rays = 20 # 1d rays in scan
         self.ray_lenght = 5.0 # In m
         self.ray_lenght_px = self.ray_lenght * METRIC_KF # In px
-        self.rays_angles = np.arange(start=-self.fov_rad/2, stop=self.fov_rad/2, step=self.fov_rad/self.rays)
+        self.rays_angles = np.arange(start=-(self.fov_rad/2)+0.0001, stop=(self.fov_rad/2)+0.0001, step=self.fov_rad/self.rays)
         self.rays_end_points_init = [np.array([self.ray_lenght_px * np.cos(rays_angle), self.ray_lenght_px * np.sin(rays_angle), 1]) for rays_angle in self.rays_angles]
         self.rays_end_points = [np.array([0, 0, 1]) for _ in range(len(self.rays_angles))]
         self.transform = transform
@@ -43,9 +43,12 @@ class Lidar2D:
         for i in range(len(self.rays_end_points)):
             self.rays_end_points[i] =  self.transform @ self.rays_end_points_init[i].T
 
-    def scan(self, obstacles_lines): # self.lidar_points in px for visualisation, self.lidar_distances in m for navigate
+    def scan(self, obstacles_lines, robot_lines = None): # self.lidar_points in px for visualisation, self.lidar_distances in m for navigate
         rays = self.get_ray_lines()
         self.lidar_points, self.lidar_distances = find_collision_rays(rays, obstacles_lines)
+        if robot_lines is not None:
+            _, self.lidar_distances_to_robot = find_collision_rays(rays, robot_lines)
+            self.lidar_distances = self.lidar_distances - self.lidar_distances_to_robot
         return self.lidar_points, self.lidar_distances/METRIC_KF 
 
     def draw(self, screen):

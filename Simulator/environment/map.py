@@ -15,9 +15,11 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from utils.transforms import *
 from environment.obstacles import *
 
+def distance(point_1, point_2):
+    return np.sqrt(np.square(point_1[0] - point_2[0]) + np.square(point_1[1] - point_2[1]))
 
 class Map:
-    def __init__(self, size = (800, 800), seed=None) -> None:
+    def __init__(self, size = (800, 800), seed=None, robot_pose=None) -> None:
         self.global_map = None
         if seed is not None:
             random.seed(seed)
@@ -30,6 +32,10 @@ class Map:
         # Cтены 
         # Нужен генератор карт
         border_width = 10
+        if robot_pose is None:
+            self.robot_pose  = [100,100,0]
+        else:
+            self.robot_pose = robot_pose
 
         obstacle_l = Obstacle(init_pos=[border_width//2, size[1]//2, 0], init_size=[border_width, size[1]])
         obstacle_r = Obstacle(init_pos=[size[0]-border_width//2, size[1]//2, 0], init_size=[border_width, size[1]])
@@ -82,7 +88,7 @@ class Map:
 
         self.bin_map_og_rgb = cv2.imread("global_planner/map/map_bin_ext.jpg")
 
-        for i in range(2):
+        for i in range(15):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose())
             self.moveable_obstacles.append(moveable_obstacle)
 
@@ -107,8 +113,9 @@ class Map:
         while True:
             x = random.randint(0, self.size[0]-1)
             y = random.randint(0, self.size[1]-1)
-            if not self.bin_map_og[y,x]:
-                break
+            if not self.bin_map_og[y,x] and distance([x,y], [self.robot_pose[0], self.robot_pose[1]]) > 100:
+                    break
+
         fi = (random.random()-0.5)*2*np.pi
         return x,y,fi
 

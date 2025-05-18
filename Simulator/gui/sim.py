@@ -88,7 +88,7 @@ class Simulator:
     
     def reset(self):
         # init objects
-        self.map = Map(size=self.WINDOW_SIZE)
+        self.map = Map(size=self.WINDOW_SIZE, robot_pose=self.robot_init_pos)
         self.map.set_global_map(self.global_map)
         moveable_obstacles = self.map.get_moveable_obstacles()
         if self.robot_init_pos is None:

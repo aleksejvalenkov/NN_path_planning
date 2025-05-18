@@ -6,8 +6,8 @@ import gymnasium as gym
 from gymnasium import spaces
 
 # import the skrl components to build the RL system
-from skrl.agents.torch.sac import SAC_DEFAULT_CONFIG
-from skrl.agents.torch.sac import SAC_RNN as SAC
+# from skrl.agents.torch.sac import SAC_DEFAULT_CONFIG
+from skrl.agents.torch.sac import SAC_RNN as SAC, SAC_DEFAULT_CONFIG
 from skrl.resources.noises.torch import OrnsteinUhlenbeckNoise
 from skrl.envs.wrappers.torch import wrap_env
 from skrl.memories.torch import RandomMemory
@@ -25,25 +25,37 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from RL.env.gym_env import CustomEnv
 # from RL.agent.SAC_skrl_ResNET_policy import Actor, Critic
+# from RL.agent.SAC_skrl_RNN_policy_encoder import Actor, Critic
 from RL.agent.SAC_skrl_RNN_policy import Actor, Critic
 
+
 # load and wrap the gymnasium environment.
-NUM_ENVS = 4
+
 # custom_env = CustomEnv(render_mode="human")
 # custom_env = CustomEnv(render_mode=None)
+
+# NUM_ENVS = 1
+# robot_init_pos = [100, 100, 1.57]
+# robot_goal_pos = [1500, 300, 1.57]
+# seed = 42
+
+NUM_ENVS = 2
+robot_init_pos = None
+robot_goal_pos = None
+seed = None
 
 gym.register(id="my_v1",entry_point=CustomEnv, vector_entry_point=CustomEnv)
 env = gym.make_vec(id="my_v1", 
                    num_envs=NUM_ENVS, 
                    vectorization_mode="async",
-                   seed=None,
-                   robot_init_pos=None,
-                   robot_goal_pos=None,
+                   seed=seed,
+                   robot_init_pos=robot_init_pos,
+                   robot_goal_pos=robot_goal_pos,
                    )
 
 env = wrap_env(env)
 device = env.device
-print(device)
+print("device = ", device)
 
 # instantiate a memory as rollout buffer (any memory can be used for this)
 memory = RandomMemory(memory_size=20000, num_envs=env.num_envs, device=device, replacement=False)
@@ -70,14 +82,14 @@ models["target_critic_2"] = Critic(env.observation_space, env.action_space, devi
 
 cfg = SAC_DEFAULT_CONFIG.copy()
 cfg["discount_factor"] = 0.98
-cfg["batch_size"] = 100
+cfg["batch_size"] = 10
 cfg["random_timesteps"] = 0
-cfg["learning_starts"] = 1000
+cfg["learning_starts"] = 100
 cfg["learn_entropy"] = True
 # logging to TensorBoard and write checkpoints (in timesteps)
 cfg["experiment"]["write_interval"] = 200
 cfg["experiment"]["checkpoint_interval"] = 25000
-cfg["experiment"]["directory"] = "runs/torch/SAC_RNN_adapt_reward"
+cfg["experiment"]["directory"] = "runs/torch/SAC_RNN_gpt_reward_new_model_SAFE"
 
 
 
@@ -88,7 +100,7 @@ agent = SAC(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/SAC_RNN_adapt_reward/25-04-24_09-32-38-637555_SAC_RNN/checkpoints/agent_150000.pt')
+# agent.load('runs/torch/SAC_RNN_gpt_reward_new_model_180_rays/25-05-17_20-51-32-979051_SAC_RNN_FAST/checkpoints/agent_550000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer

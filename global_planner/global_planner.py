@@ -82,7 +82,7 @@ class GlobalPlanner:
             # path = np.vstack((path, np.array(goal)))
         # path.append(goal)
         # path = np.array(path)
-        return path
+        return path[1:]
 
     def get_bin_map(self):
         return self.bin_map
