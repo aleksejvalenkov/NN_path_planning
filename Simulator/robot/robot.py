@@ -381,7 +381,7 @@ class Robot:
         Cop = 0.2 # in meter mast be < self.lidar.ray_lenght
         Xt = np.min(self.lidar_distances)
         Xtn = (Xt - Cop) / self.lidar.ray_lenght 
-        max_live_time = 30
+        max_live_time = 120 # 30 
         # print('Xt= ', Xt)
         robot_orientation = self.theta
         target_orientation = get_target_angle((self.x, self.y), (self.target[0], self.target[1]))
@@ -446,7 +446,7 @@ class Robot:
             r_prog = max_revard
             terminated = True
             reason = 'Goal reached'
-        elif self.collision[0] or Xt < Co:
+        elif self.collision[0]:# or Xt < Co:
             # reward = max_penalty
             r_col = beta_crash
             terminated = True

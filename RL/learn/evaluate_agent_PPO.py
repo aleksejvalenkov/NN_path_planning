@@ -26,6 +26,7 @@ env = gym.make(id="my_v1",
                seed=42,
                robot_init_pos=robot_init_pos,
                robot_goal_pos=robot_goal_pos,
+               run_dwa=True,
                )
 
 device = 'cuda:0'

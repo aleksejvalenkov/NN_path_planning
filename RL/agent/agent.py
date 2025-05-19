@@ -81,8 +81,8 @@ class AgentSafe:
         self.device = device
         memory = RandomMemory(memory_size=1024, device=device)
         models = {}
-        models["policy"] = Actor(observation_space, action_space, device, num_envs=1)
-        models["value"] = Critic(observation_space, action_space, device, num_envs=1)
+        models["policy"] = Actor(observation_space, action_space, device)
+        models["value"] = Critic(observation_space, action_space, device)
 
         # configure and instantiate the agent (visit its documentation to see all the options)
         cfg = RPO_DEFAULT_CONFIG.copy()
@@ -119,7 +119,7 @@ class AgentSafe:
             device=self.device)
         
         # self.agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
-        self.agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
+        # self.agent.load('runs/torch/RPO_LSTM_base_reward_angle_focus/25-04-28_21-59-13-384451_RPO_RNN/checkpoints/best_agent.pt')
         
     def gen_action(self, observation):
         observation = torch.tensor(observation, dtype=torch.float32, device=self.device)
