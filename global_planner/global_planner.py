@@ -7,10 +7,10 @@ import numpy as np
 METRIC_KF = 100 # 1m = 100px
 
 class GlobalPlanner:
-    def __init__(self):
+    def __init__(self, grid_size=30, occupation_range=60):
         pass
-        self.occupation_range = 60
-        self.grid_size = 30 # In px
+        self.occupation_range = occupation_range
+        self.grid_size = grid_size # In px
         self.bin_map = None
         self.bin_map_occupation = None
         self.bin_map_decomposition = None

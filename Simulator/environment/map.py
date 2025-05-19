@@ -88,10 +88,10 @@ class Map:
 
         self.bin_map_og_rgb = cv2.imread("global_planner/map/map_bin_ext.jpg")
 
-        for i in range(15):
+        for i in range(5):
             moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose(),
                                                  rays=random.randint(3, 10), 
-                                                 radius=random.randint(10, 30), 
+                                                 radius=random.randint(15, 30), 
                                                  resizable=False)
             # moveable_obstacle = MoveableObstacle(init_pos=self.get_random_pose(),
             #                                      rays=10, 

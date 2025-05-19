@@ -54,6 +54,11 @@ class Simulator:
         else:
             self.robot_goal_pos = None
 
+        if 'run_dwa' in kwargs:
+            self.run_dwa = kwargs['run_dwa']
+        else:
+            self.run_dwa = False
+
         # Learning parametrs
         self.observation_space = np.zeros((16))
         self.observation = []
@@ -102,9 +107,9 @@ class Simulator:
                     break
             fi = (random.random()-0.5)*2*np.pi
             init_pos = [x, y, fi]
-            self.robot = Robot(self.map, init_pos=init_pos)
+            self.robot = Robot(self.map, init_pos=init_pos, run_dwa=self.run_dwa)
         else:
-            self.robot = Robot(self.map, init_pos=self.robot_init_pos)
+            self.robot = Robot(self.map, init_pos=self.robot_init_pos, run_dwa=self.run_dwa)
             init_pos = self.robot_init_pos
 
         if self.robot_goal_pos is None:
@@ -126,7 +131,10 @@ class Simulator:
         return state, info
 
     def step(self, action, pid_mode=False):
-        self.robot.controll(action, from_action_dict=False, pid_mode=pid_mode) # Перемещаем робота на одно действие
+        if self.run_dwa:
+            pass
+        else:
+            self.robot.controll(action, from_action_dict=False, pid_mode=pid_mode) # Перемещаем робота на одно действие
 
         self.pygame_iter() # Обновляем состояние среды
         next_state, info_s = self.robot.get_state()
