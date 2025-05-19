@@ -10,8 +10,8 @@ from RL.agent.agent import Agent
 # Define the initial and goal position of the robot
 robot_init_pos = [100, 100, 1.57]
 robot_goal_pos = [1500, 300, 1.57]
-robot_init_pos = None
-robot_goal_pos = None
+# robot_init_pos = None
+# robot_goal_pos = None
 
 # load and wrap the gymnasium environment.
 NUM_ENVS = 1
@@ -21,7 +21,7 @@ env = gym.make(id="my_v1",
                seed=None,
                robot_init_pos=robot_init_pos,
                robot_goal_pos=robot_goal_pos,
-               run_dwa=True,
+               run_dwa=False,
                )
 
 device = 'cuda:0'

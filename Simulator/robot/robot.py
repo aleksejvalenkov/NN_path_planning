@@ -79,8 +79,8 @@ class Robot:
         self.W = 0 # In rad/s
         self.max_vx = 0.4 # In m/s
         self.min_vx = -0.1 # In m/s
-        self.max_vy = 0.0 # In m/s
-        self.min_vy = -0.0 # In m/s
+        self.max_vy = 0.1 # In m/s
+        self.min_vy = -0.1 # In m/s
         self.max_w = 1.0 # In rad/s
         self.min_w = -1.0 # In rad/s
         self.wheel_eps = 30 # angular acceleration for the wheel In 
@@ -119,7 +119,7 @@ class Robot:
              [  0., 0., 1. ]]
              )
         self.lidar = Lidar2D(self.transform @ self.lidar_transform)
-        self.lidar_points = []
+        self.lidar_points = [[0,0]]
         self.lidar_distances = []
 
         self.auto_mode = False
@@ -135,25 +135,26 @@ class Robot:
 
         if self.dwa_mode:
             print('DWA mode')
+            self.global_planner_for_dwa = GlobalPlanner(grid_size=30, occupation_range=10)
             obstacles_points = []
-            bin_map_decomposition = self.global_planner.bin_map_decomposition
+            bin_map_decomposition = self.global_planner_for_dwa.bin_map_decomposition
             print(bin_map_decomposition.shape)
             for idx in np.ndindex(bin_map_decomposition.shape):
                 i, j, k = idx
                 if bin_map_decomposition[idx] == 1:
                     obstacles_points.append(bin_map_decomposition[i,j][:2])
 
-            obstacles_points = np.array(obstacles_points)/METRIC_KF
+            self.obstacles_points_dwa = np.array(obstacles_points)/METRIC_KF
             # print(obstacles_points)
             start = np.array([self.get_pose()[0]/METRIC_KF, self.get_pose()[1]/METRIC_KF, self.get_pose()[2]])
             self.target = [1500, 300, 1.57]
             goal = np.array([self.target[0]/METRIC_KF, self.target[1]/METRIC_KF])
-            self.dwa = DWA(obstacles_points, goal, start)
+            self.dwa = DWA(self.obstacles_points_dwa, goal, start)
             # self.dwa.show(start=start)
 
         self.trajectory = [np.array(self.get_pose())[0:2]]
 
-        self.state = np.zeros((16))
+        self.state = np.zeros((27))
         self.update(self.map, render_fps=0)
         self.get_state()
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2])
@@ -168,10 +169,15 @@ class Robot:
 
 
 
-    def solve_dwa(self, draw=True):
+    def solve_dwa(self, draw=False):
         # x = state [x(m), y(m), yaw(rad), v(m/s), omega(rad/s)]
         # x = np.array([self.x/METRIC_KF, self.y/METRIC_KF, self.theta, self.Vx, self.W])
         # print(x)
+        lidar_points = np.array(self.lidar_points) / METRIC_KF
+        lidar_points = lidar_points.tolist()
+        obstacles_points_dwa = self.obstacles_points_dwa.tolist()
+        obstacles_points = np.array(obstacles_points_dwa + lidar_points)
+        self.dwa.set_obstacles(obstacles_points)
         x, u, _ = self.dwa.step(draw=draw)
         self.x = x[0] * METRIC_KF
         self.y = x[1] * METRIC_KF
@@ -252,6 +258,9 @@ class Robot:
         self.Dt_l = np.linalg.norm(np.array(self.get_pose())[0:2] - np.array(self.target)[0:2]) / METRIC_KF
         self.pid_x.setpoint = self.target[0]
         self.pid_y.setpoint = self.target[1]
+        if self.dwa_mode:
+            self.dwa.set_goal(np.array([self.target[0]/METRIC_KF, self.target[1]/METRIC_KF]))
+            # print('dwa set goal = ', self.target)
 
     def get_observation(self, goal, depth_image):
         obs = list(goal)
@@ -465,6 +474,9 @@ class Robot:
                     self.way_points = self.way_points[1:]
                 else:
                     self.target = self.goal
+
+            if self.dwa_mode:
+                self.dwa.set_goal(np.array([self.target[0]/METRIC_KF, self.target[1]/METRIC_KF]))
 
         
         new_reward = r_prog + r_orient + r_col + r_smooth + r_energy + r_time

@@ -53,15 +53,15 @@ class Config:
         self.yaw_rate_resolution = 0.5 * math.pi / 180.0  # [rad/s]
         self.dt = 0.1  # [s] Time tick for motion prediction
         self.predict_time = 1.0  # [s]
-        self.to_goal_cost_gain = 0.15
+        self.to_goal_cost_gain = 0.5
         self.speed_cost_gain = 1.0
-        self.obstacle_cost_gain = 1.0
+        self.obstacle_cost_gain = 0.1
         self.robot_stuck_flag_cons = 0.001  # constant to prevent robot stucked
         self.robot_type = RobotType.circle
 
         # if robot_type == RobotType.circle
         # Also used to check if goal is reached in both types
-        self.robot_radius = 0.1  # [m] for collision check
+        self.robot_radius = 0.4  # [m] for collision check
 
         # if robot_type == RobotType.rectangle
         self.robot_width = 0.32  # [m] for collision check
@@ -272,7 +272,13 @@ class DWA:
         # goal position [x(m), y(m)]
         self.goal = np.array(goal)
     
+    def set_goal(self, goal):
+        self.gx = goal[0]
+        self.gy = goal[1]
+        self.goal = np.array(goal)
 
+    def set_obstacles(self, obstacles):
+        self.config.ob = obstacles
 
     def step(self, draw=False):
         # input [forward speed, yaw_rate]
