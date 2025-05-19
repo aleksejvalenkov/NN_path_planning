@@ -185,6 +185,7 @@ class Robot:
         self.transform = get_transform(np.array([self.x, self.y]), self.theta)
         self.Vx = u[0]
         self.W = u[1]
+        self.trajectory.append(np.array(self.get_pose())[0:2])
         return u
 
 
