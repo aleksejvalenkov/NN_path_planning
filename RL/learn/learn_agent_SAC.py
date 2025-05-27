@@ -51,7 +51,8 @@ env = gym.make_vec(id="my_v1",
                    seed=seed,
                    robot_init_pos=robot_init_pos,
                    robot_goal_pos=robot_goal_pos,
-                   run_dwa=False,
+                   run_dwa=True,
+                   evolution=True,
                    )
 
 env = wrap_env(env)
@@ -101,7 +102,10 @@ agent = SAC(models=models,
             action_space=env.action_space,
             device=device)
 
-# agent.load('runs/torch/SAC_RNN_gpt_reward_new_model_180_rays/25-05-17_20-04-57-791190_SAC_RNN/checkpoints/agent_25000.pt')
+# FAST agent
+# agent.load('runs/torch/SAC_RNN_gpt_reward_new_model_180_rays_FAST/25-05-17_20-51-32-979051_SAC_RNN_FAST/checkpoints/agent_550000.pt')
+# SAFE agent
+agent.load('runs/torch/SAC_RNN_gpt_reward_new_model_SAFE/25-05-18_21-25-44-546102_SAC_RNN_SAFE/checkpoints/agent_25000.pt')
 
 # configure and instantiate the RL trainer
 # create a sequential trainer
@@ -109,6 +113,6 @@ cfg_trainer = {"timesteps": 2000000, "headless": True}
 trainer = SequentialTrainer(env=env, agents=[agent], cfg=cfg_trainer)
 
 # start training
-trainer.train()
+# trainer.train()
 
-# trainer.eval()
+trainer.eval()

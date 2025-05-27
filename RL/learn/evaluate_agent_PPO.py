@@ -27,6 +27,7 @@ env = gym.make(id="my_v1",
                robot_init_pos=robot_init_pos,
                robot_goal_pos=robot_goal_pos,
                run_dwa=True,
+               evolution=True,
                )
 
 device = 'cuda:0'
@@ -36,12 +37,13 @@ agent_safe = AgentSafe(env.observation_space, env.action_space, device=device)
 
 
 
-NUM_EPISODES = 100
+NUM_EPISODES = 4
 goal_reached = 0
 collision_static = 0
 collision_moveable = 0
 time_is_out = 0
 mean_done_time = 0
+reaced_waypoints = 0
 
 model = "fast"
 
@@ -62,23 +64,34 @@ for episode_id in tqdm(range(NUM_EPISODES)):
         # else:
         #     model = "fast"
 
-        if terminated or truncated:
-            if info['reason'] == 'Goal reached':
-                goal_reached += 1
-                mean_done_time += info['done_time']
-            elif info['reason'] == 'Collision':
-                if info['obstacle_type'] == 'moveable':
-                    collision_moveable += 1
-                else:
-                    collision_static += 1
-            elif info['reason'] == 'Time is out':
-                time_is_out += 1
-            break
+        # if terminated or truncated:
+        #     if info['reason'] == 'Goal reached':
+        #         goal_reached += 1
+        #         mean_done_time += info['done_time']
+        #     elif info['reason'] == 'Collision':
+        #         if info['obstacle_type'] == 'moveable':
+        #             collision_moveable += 1
+        #         else:
+        #             collision_static += 1
+        #     elif info['reason'] == 'Time is out':
+        #         time_is_out += 1
+            
+        #     reaced_waypoints += info["target_reached"]/info["max_path_length"]
+            # break
 
-collision_count = collision_static + collision_moveable
-print(f"Goal reached: {goal_reached}/{NUM_EPISODES} = {goal_reached/NUM_EPISODES}")
-print(f"Collision: {collision_count}/{NUM_EPISODES} = {collision_count/NUM_EPISODES}")
-print(f"Collision static: {collision_static}/{collision_count} = {collision_static/collision_count}")
-print(f"Collision moveable: {collision_moveable}/{collision_count} = {collision_moveable/collision_count}")
-print(f"Time is out: {time_is_out}/{NUM_EPISODES} = {time_is_out/NUM_EPISODES}")
-print(f"Mean done time: {mean_done_time/goal_reached}")
+# collision_count = collision_static + collision_moveable
+# print(f"Goal reached: {goal_reached}/{NUM_EPISODES} = {goal_reached/NUM_EPISODES}")
+# print(f"Collision: {collision_count}/{NUM_EPISODES} = {collision_count/NUM_EPISODES}")
+# if collision_count > 0:
+#     print(f"Collision static: {collision_static}/{collision_count} = {collision_static/collision_count}")
+#     print(f"Collision moveable: {collision_moveable}/{collision_count} = {collision_moveable/collision_count}")
+# else:
+#     print(f"Collision static: {collision_static}/{collision_count} = {0}")
+#     print(f"Collision moveable: {collision_moveable}/{collision_count} = {0}")
+# print(f"Time is out: {time_is_out}/{NUM_EPISODES} = {time_is_out/NUM_EPISODES}")
+# if goal_reached > 0:
+#     print(f"Mean done time: {mean_done_time/goal_reached} sec")
+# else:
+#     print(f"Mean done time: {0} sec")
+# print(f"Mean reached waypoints: {reaced_waypoints}/{NUM_EPISODES} = {reaced_waypoints/NUM_EPISODES} min")
+

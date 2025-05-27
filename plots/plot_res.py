@@ -43,10 +43,10 @@ y_PP0_r2_smoothed = uniform_filter1d(y_PP0_r2, size=window)
 
 # plot
 fig, ax = plt.subplots()
-
-ax.plot(x_DDPG_r1, y_DDPG_r1_smoothed, label='DDPG-r1')
-ax.plot(x_PP0_r1, y_PP0_r1_smoothed, label='PP0-r1')
-ax.plot(x_PP0_r2, y_PP0_r2_smoothed, label='PP0-r2')
+plt.rcParams['font.size'] = 16
+ax.plot(x_PP0_r1, y_PP0_r1_smoothed, label='Быстрая политика в легковесном симуляторе')
+ax.plot(x_DDPG_r1, y_DDPG_r1_smoothed, label='Быстрая политика дообучение в MuJoCo с шумом')
+ax.plot(x_PP0_r2, y_PP0_r2_smoothed, label='Быстрая политика дообучение в MuJoCo без шума')
 
 ax.legend()
 ax.grid(True)

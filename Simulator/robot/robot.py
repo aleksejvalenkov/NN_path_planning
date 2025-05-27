@@ -88,6 +88,7 @@ class Robot:
 
         self.target = init_pos
         self.goal = init_pos
+        self.target_reached = 0
 
         self.map = map
 
@@ -134,11 +135,11 @@ class Robot:
         self.dwa_mode = run_dwa
 
         if self.dwa_mode:
-            print('DWA mode')
+            # print('DWA mode')
             self.global_planner_for_dwa = GlobalPlanner(grid_size=30, occupation_range=10)
             obstacles_points = []
             bin_map_decomposition = self.global_planner_for_dwa.bin_map_decomposition
-            print(bin_map_decomposition.shape)
+            # print(bin_map_decomposition.shape)
             for idx in np.ndindex(bin_map_decomposition.shape):
                 i, j, k = idx
                 if bin_map_decomposition[idx] == 1:
@@ -165,7 +166,7 @@ class Robot:
 
         self.reward_norm = RewardNormalizer(alpha=0.01)
         
-        self.instantaneous_reward = None
+        self.instantaneous_reward = 0
 
 
 
@@ -468,7 +469,7 @@ class Robot:
             # reward = max_revard #* (1 - (self.n_steps / max_steps))
             r_prog = max_revard
             # self.way_points = self.global_planner.plan_path(self.get_pose(), self.goal)
-
+            self.target_reached += 1
             if self.way_points is not None:
                 if len(self.way_points)>0:
                     self.target = self.way_points[0]
@@ -511,7 +512,11 @@ class Robot:
             'reason': reason,
             'done_time': self.live_secs,
             'obstacle_type': obstacle_type,
-            'Xt': Xt
+            'Xt': Xt,
+            'speed': np.array([self.Vx, self.Vy, self.W]),
+            'steps': self.n_steps,
+            'target_reached': self.target_reached,
+            'max_path_length': 9,
         }
 
 
